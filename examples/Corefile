@@ -1,0 +1,40 @@
+.:5553 {
+    log
+    errors
+    cache 3600
+
+    forward . 1.1.1.1 1.0.0.1
+}
+
+example.com:5553 {
+    template IN A {
+        rcode NOERROR
+    }
+
+    forward . 127.0.0.1:5554
+}
+
+ya.ru:5553 {
+    template IN A {
+        rcode NOERROR
+    }
+
+    forward . 127.0.0.1:5554
+}
+
+.:127.0.0.1:5554 {
+    log
+    errors
+    erratic
+    finalize
+
+    # Apply DNS64 synthesis to queries routed here
+    dns64 {
+        translate_all
+        allow_ipv4
+        prefix 64:ff9b::/96
+    }
+
+    # Forward the original domain names to Google DNS
+    forward . 1.1.1.1 1.0.0.1
+}
