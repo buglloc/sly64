@@ -1,6 +1,6 @@
 ARG BASE=gcr.io/distroless/static-debian12:nonroot
 
-FROM golang:1.24 as build
+FROM golang:1.24 AS build
 
 SHELL [ "/bin/sh", "-ec" ]
 WORKDIR /go/src/app
@@ -9,9 +9,7 @@ COPY . .
 RUN go mod download
 RUN CGO_ENABLED=0 go build -o /go/bin/sly64 ./
 
-RUN setcap cap_net_bind_service=+ep /go/bin/sly64
-
-FROM --platform=$TARGETPLATFORM ${BASE}
+FROM ${BASE}
 
 COPY --from=build /go/bin/sly64 /sly64
 USER nonroot:nonroot
