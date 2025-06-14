@@ -1,31 +1,21 @@
 .:5553 {
-    log
     errors
-    cache 3600
 
     forward . 1.1.1.1 1.0.0.1
 }
 
-example.com:5553 {
+{{range $domain := .ext}}
+{{$domain}}:5553 {
     template IN A {
         rcode NOERROR
     }
 
     forward . 127.0.0.1:5554
 }
+{{end}}
 
-ya.ru:5553 {
-    template IN A {
-        rcode NOERROR
-    }
-
-    forward . 127.0.0.1:5554
-}
-
-.:127.0.0.1:5554 {
-    log
+.:5554 127.0.0.1 {
     errors
-    erratic
     finalize
 
     # Apply DNS64 synthesis to queries routed here
