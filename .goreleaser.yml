@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+
+builds:
+  - binary: sly64
+    main: ./
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm
+      - arm64
+      - riscv64
+    goarm:
+      - '7'
+    ignore:
+      - goos: darwin
+        goarch: riscv64
+      - goos: windows
+        goarch: riscv64
+    env:
+      - CGO_ENABLED=0
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w # Don't set main.version.
+
+gomod:
+  proxy: true
+
+archives:
+  - name_template: "{{.Binary}}_{{.Os}}_{{.Arch}}"
+    files:
+      - README.md
+      - examples/**
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+release:
+  draft: true
+
+snapshot:
+  version_template: "{{.Version}}"
+
+checksum:
+  name_template: "sly64_checksums.txt"
