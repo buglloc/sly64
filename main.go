@@ -1,17 +1,20 @@
 package main
 
 import (
+	"bytes"
+	"crypto/md5"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/coredns/coredns/core/dnsserver"
 	_ "github.com/coredns/coredns/core/plugin"
 	"github.com/coredns/coredns/coremain"
-	"github.com/fsnotify/fsnotify"
 	_ "github.com/tmeckel/coredns-finalizer"
 	"gopkg.in/yaml.v3"
 )
@@ -23,43 +26,59 @@ func init() {
 	)
 }
 
-func watchFile(path string, callback func()) error {
-	watcher, err := fsnotify.NewWatcher()
+func md5sum(filePath string) ([]byte, error) {
+	file, err := os.Open(filePath)
 	if err != nil {
-		return fmt.Errorf("create fs watcher: %w", err)
+		return nil, fmt.Errorf("open file: %w", err)
+	}
+	defer func() { _ = file.Close() }()
+
+	hash := md5.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return nil, fmt.Errorf("read file: %w", err)
 	}
 
-	err = watcher.Add(filepath.Dir(path))
+	return hash.Sum(nil), nil
+}
+
+func watchFile(path string, callback func()) error {
+	stat, err := os.Stat(path)
 	if err != nil {
-		_ = watcher.Close()
-		return fmt.Errorf("add path to watcher: %w", err)
+		return fmt.Errorf("stat file: %w", err)
 	}
+
+	lastModTime := stat.ModTime()
+	lastMd5, err := md5sum(path)
+	if err != nil {
+		return fmt.Errorf("md5sum file: %w", err)
+	}
+
+	ticker := time.NewTicker(30 * time.Second)
 
 	go func() {
-		defer watcher.Close()
-
 		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					return
-				}
-
-				if event.Name != path {
-					continue
-				}
-
-				if event.Op&(fsnotify.Create) == 0 {
-					continue
-				}
-
-				callback()
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-				log.Println("watch fail:", err)
+			<-ticker.C
+			stat, err := os.Stat(path)
+			if err != nil {
+				continue
 			}
+
+			if stat.ModTime().Compare(lastModTime) <= 0 {
+				continue
+			}
+
+			newMd5, err := md5sum(path)
+			if err != nil {
+				continue
+			}
+
+			if bytes.Equal(lastMd5, newMd5) {
+				continue
+			}
+
+			lastMd5 = newMd5
+			lastModTime = stat.ModTime()
+			callback()
 		}
 	}()
 

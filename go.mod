@@ -4,7 +4,6 @@ go 1.24.4
 
 require (
 	github.com/coredns/coredns v1.12.2
-	github.com/fsnotify/fsnotify v1.9.0
 	github.com/tmeckel/coredns-finalizer v0.0.0-20230427174020-dc4780617144
 	gopkg.in/yaml.v3 v3.0.1
 )
