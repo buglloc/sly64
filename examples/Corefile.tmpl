@@ -15,9 +15,11 @@
 {{end}}
 
 .:5554 {
-    bind 127.0.0.1 ::1
-    errors
-    finalize
+    bind 127.0.0.1
+
+    template IN HTTPS {
+        rcode NOERROR
+    }
 
     # Apply DNS64 synthesis to queries routed here
     dns64 {
@@ -25,6 +27,14 @@
         allow_ipv4
         prefix 64:ff9b::/96
     }
+
+    forward . 127.0.0.1:5555
+}
+
+.:5555 {
+    bind 127.0.0.1
+    errors
+    finalize
 
     # Forward the original domain names
     forward . 1.1.1.1 1.0.0.1
