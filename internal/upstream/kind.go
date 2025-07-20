@@ -19,6 +19,7 @@ type Kind uint8
 const (
 	KindNone Kind = iota
 	KindPlain
+	KindDoT
 )
 
 func (k Kind) String() string {
@@ -27,6 +28,8 @@ func (k Kind) String() string {
 		return "none"
 	case KindPlain:
 		return "plain"
+	case KindDoT:
+		return "dot"
 	default:
 		return fmt.Sprintf("upstream_%d", k)
 	}
@@ -38,6 +41,8 @@ func (k *Kind) fromString(v string) error {
 		*k = KindNone
 	case "plain":
 		*k = KindPlain
+	case "dot":
+		*k = KindDoT
 	default:
 		return fmt.Errorf("unknown upstream: %s", v)
 	}

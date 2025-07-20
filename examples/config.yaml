@@ -7,12 +7,13 @@ listeners:
 routes:
   - name: "default"
     upstreams:
+      - kind: "dot"
+        dot:
+          addr: "tcp-tls://1.1.1.1:853"
+          server_name: "one.one.one.one"
       - kind: "plain"
         plain:
           addr: "udp://1.1.1.1"
-      - kind: "plain"
-        plain:
-          addr: "udp://1.0.0.1"
   - name: "eu"
     finalize: true
     dns64:

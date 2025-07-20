@@ -96,5 +96,5 @@ func loadConfig(cfg *Config, path string) error {
 		return fmt.Errorf("read config: %w", err)
 	}
 
-	return yaml.Unmarshal(data, cfg)
+	return yaml.UnmarshalWithOptions(data, cfg, yaml.DisallowUnknownField())
 }

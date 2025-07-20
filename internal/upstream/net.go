@@ -20,6 +20,8 @@ const (
 	netTCP  = "tcp"
 	netTCP4 = "tcp4"
 	netTCP6 = "tcp6"
+
+	netTCPTLS = "tcp-tls"
 )
 
 func NewDialer(opts ...DialOption) *net.Dialer {

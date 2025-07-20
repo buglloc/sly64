@@ -19,8 +19,6 @@ const (
 	DefaultPlainAddr    = "1.1.1.1:53"
 	DefaultPlainTimeout = 2 * time.Second
 	DefaultPlainPort    = 53
-
-	plainLogSource = "upstream_plain"
 )
 
 var _ Upstream = (*Plain)(nil)
@@ -57,7 +55,7 @@ func NewPlain(opts ...Option) (*Plain, error) {
 		}
 
 		switch o := opt.(type) {
-		case addrOpt:
+		case plainAddrOpt:
 			addr, err := p.parseAddr(o.addr)
 			if err != nil {
 				return nil, fmt.Errorf("invalid upstream addr %q: %w", o.addr, err)
@@ -90,7 +88,7 @@ func (p *Plain) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 	case errors.Is(err, ErrMalformedRsp):
 		log.Ctx(ctx).
 			Info().
-			Str("source", plainLogSource).
+			Str("source", "upstream_plain").
 			Stringer("addr", p.addr).
 			Err(err).
 			Msg("plain response is malformed, using tcp")
@@ -99,7 +97,7 @@ func (p *Plain) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 	case rsp.Truncated:
 		log.Ctx(ctx).
 			Info().
-			Str("source", plainLogSource).
+			Str("source", "upstream_plain").
 			Stringer("addr", p.addr).
 			Err(err).
 			Msg("plain response is truncated, using tcp")
@@ -122,7 +120,7 @@ func (p *Plain) exchange(ctx context.Context, req *dns.Msg, network string, addr
 		return nil, fmt.Errorf("exchange with %s: %w", p.addr, err)
 	}
 
-	return rsp, p.validateResponse(req, rsp)
+	return rsp, validateResponse(req, rsp)
 }
 
 func (p *Plain) Address() string {
@@ -130,25 +128,6 @@ func (p *Plain) Address() string {
 }
 
 func (p *Plain) Close() error {
-	return nil
-}
-
-func (p *Plain) validateResponse(req, resp *dns.Msg) (err error) {
-	if qlen := len(resp.Question); qlen != 1 {
-		return fmt.Errorf("%w: only 1 question allowed; got %d", ErrMalformedRsp, qlen)
-	}
-
-	reqQ, respQ := req.Question[0], resp.Question[0]
-
-	if reqQ.Qtype != respQ.Qtype {
-		return fmt.Errorf("%w: mismatched type %s", ErrMalformedRsp, dns.Type(respQ.Qtype))
-	}
-
-	// Compare the names case-insensitively, just like CoreDNS does.
-	if !strings.EqualFold(reqQ.Name, respQ.Name) {
-		return fmt.Errorf("%w: mismatched name %q", ErrMalformedRsp, respQ.Name)
-	}
-
 	return nil
 }
 

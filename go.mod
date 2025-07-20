@@ -3,6 +3,7 @@ module github.com/buglloc/sly64/v2
 go 1.24.4
 
 require (
+	github.com/buglloc/certifi v0.9.4
 	github.com/goccy/go-yaml v1.18.0
 	github.com/karlseguin/ccache/v3 v3.0.6
 	github.com/miekg/dns v1.1.67

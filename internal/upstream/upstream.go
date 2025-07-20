@@ -2,6 +2,8 @@ package upstream
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/miekg/dns"
 )
@@ -15,4 +17,22 @@ type Upstream interface {
 
 	Address() (addr string)
 	Close() error
+}
+
+func validateResponse(req, resp *dns.Msg) (err error) {
+	if qlen := len(resp.Question); qlen != 1 {
+		return fmt.Errorf("%w: only 1 question allowed; got %d", ErrMalformedRsp, qlen)
+	}
+
+	reqQ, respQ := req.Question[0], resp.Question[0]
+	if reqQ.Qtype != respQ.Qtype {
+		return fmt.Errorf("%w: mismatched type %s", ErrMalformedRsp, dns.Type(respQ.Qtype))
+	}
+
+	// Compare the names case-insensitively, just like CoreDNS does.
+	if !strings.EqualFold(reqQ.Name, respQ.Name) {
+		return fmt.Errorf("%w: mismatched name %q", ErrMalformedRsp, respQ.Name)
+	}
+
+	return nil
 }

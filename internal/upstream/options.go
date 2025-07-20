@@ -5,7 +5,11 @@ import "time"
 type PlainOption interface {
 	isPlainOption()
 	Option
-	DialOption
+}
+
+type DoTOption interface {
+	isDoTOption()
+	Option
 }
 
 type DialOption interface {
@@ -25,14 +29,27 @@ type nopOpt struct {
 	Option
 }
 
-type addrOpt struct {
-	Option
+type plainAddrOpt struct {
+	PlainOption
 	addr string
 }
 
-func WithAddr(addr string) Option {
-	return addrOpt{
+func WithPlainAddr(addr string) PlainOption {
+	return plainAddrOpt{
 		addr: addr,
+	}
+}
+
+type dotAddrOpt struct {
+	DoTOption
+	addr       string
+	serverName string
+}
+
+func WithDoTAddr(addr, serverName string) DoTOption {
+	return dotAddrOpt{
+		addr:       addr,
+		serverName: serverName,
 	}
 }
 
