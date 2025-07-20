@@ -1,0 +1,32 @@
+log_level: info
+listeners:
+  - addr: ":1353"
+    net: "udp"
+  - addr: ":1353"
+    net: "tcp"
+routes:
+  - name: "default"
+    upstreams:
+      - kind: "plain"
+        plain:
+          addr: "udp://1.1.1.1"
+      - kind: "plain"
+        plain:
+          addr: "udp://1.0.0.1"
+  - name: "eu"
+    finalize: true
+    dns64:
+      prefix: "fd42:dead:cafe:64:1::/96"
+    cache:
+      size: 2000
+      min_ttl: 300
+    upstreams:
+      - kind: "plain"
+        plain:
+          addr: "udp://1.1.1.1"
+      - kind: "plain"
+        plain:
+          addr: "udp://1.0.0.1"
+    domains:
+      - "example.com"
+      - "wtfismyip.com"
