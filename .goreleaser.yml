@@ -3,7 +3,7 @@ version: 2
 
 builds:
   - binary: sly64
-    main: ./
+    main: ./cmd/sly64/main.go
     goos:
       - linux
     goarch:
