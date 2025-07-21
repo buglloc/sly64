@@ -1,0 +1,85 @@
+log_level: LOG_LEVEL_INFO  # Log level: DEBUG, INFO, WARN, etc.
+
+max_requests: 1000  # Maximum number of concurrent requests
+
+listener: {
+  addr: ":5553"                  # Listen address and port
+  net: NET_UDP                   # Use UDP (or NET_TCP for TCP)
+  read_timeout: { seconds: 5 }   # Timeout for reading requests
+  write_timeout: { seconds: 5 }  # Timeout for writing responses
+}
+
+listener: {
+  addr: ":5553"
+  net: NET_TCP
+  read_timeout: { seconds: 5 }
+  write_timeout: { seconds: 5 }
+}
+
+route: {
+  name: "default"
+
+  upstream: {
+    udp: {
+      addr: "77.88.8.8"
+    }
+  }
+
+  upstream: {
+    udp: {
+      addr: "77.88.8.1"
+      dial_timeout: { seconds: 1 }
+      timeout: { seconds: 2 }
+    }
+  }
+
+}
+
+route: {
+  name: "semi-free"
+  finalize: true  # Finalize A/AAAA resolution (follow CNAMEs)
+
+  dns64: {
+    prefix: "64:ff9b::/96"  # IPv6 NAT64 prefix
+  }
+
+  cache: {
+    max_items: 1000
+    min_ttl: 60
+    max_ttl: 3600
+  }
+
+  upstream: {
+    udp: {
+      addr: "1.1.1.1:53"             # Upstream DNS server (UDP)
+      dial_timeout: { seconds: 1 }   # Timeout for connecting
+      timeout: { seconds: 2 }        # Timeout for query
+      # iface: "tun0"                  # Optional interface
+    }
+  }
+
+  upstream: {
+    dot: {
+      addr: "1.1.1.1:853"             # DNS-over-TLS address
+      server_name: "one.one.one.one"  # Server name for TLS verification
+      dial_timeout: { seconds: 1 }
+      timeout: { seconds: 2 }
+      # iface: "tun0"
+    }
+  }
+
+  source: {
+    static: {
+      domain: "wtfismyip.com"
+      domain: "*.example.com"
+    }
+  }
+
+#  source: {
+#    file: {
+#      path: "/tmp/sly64_domains.txt"     # File containing domain list
+#      reload_interval: { seconds: 60 }   # How often to check for changes
+#    }
+#  }
+
+}
