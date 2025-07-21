@@ -5,61 +5,57 @@ import (
 	"os"
 	"time"
 
-	"github.com/goccy/go-yaml"
-	"github.com/rs/zerolog"
+	"google.golang.org/protobuf/encoding/prototext"
 
-	"github.com/buglloc/sly64/v2/internal/upstream"
+	"github.com/buglloc/sly64/v2/internal/config/configpb"
 )
 
-var ShutdownDeadline = 1 * time.Minute
+const (
+	ShutdownDeadline = 1 * time.Minute
+)
 
-type Config struct {
-	LogLevel    zerolog.Level `yaml:"log_level"`
-	MaxRequests int           `yaml:"max_requests"`
-	Listeners   []Listener    `yaml:"listeners"`
-	Routes      []Route       `yaml:"routes"`
-}
-
-func (c *Config) NewRuntime() (*Runtime, error) {
-	return newRuntime(c)
-}
-
-func (c *Config) Validate() error {
-	return nil
-}
-
-func Load(configs ...string) (*Config, error) {
-	cfg := &Config{
-		LogLevel: zerolog.InfoLevel,
-		Listeners: []Listener{
+func NewRuntime(configs ...string) (*Runtime, error) {
+	cfg := &configpb.Config{
+		LogLevel: configpb.LogLevel_LOG_LEVEL_INFO,
+		Listener: []*configpb.Listener{
 			{
 				Addr: ":1353",
-				Net:  "udp",
+				Net:  configpb.Net_NET_UDP,
 			},
 			{
 				Addr: ":1353",
-				Net:  "tcp",
+				Net:  configpb.Net_NET_TCP,
 			},
 		},
-		Routes: []Route{
+		Route: []*configpb.Route{
 			{
 				Name: "default",
-				Upstreams: []Upstream{
+				Upstream: []*configpb.Upstream{
 					{
-						Kind: upstream.KindPlain,
-						Plain: PlainUpstream{
-							Addr: "udp://1.1.1.1:53",
+						Kind: &configpb.Upstream_Udp{
+							Udp: &configpb.UdpUpstream{
+								Addr: "1.1.1.1:53",
+							},
 						},
 					},
 					{
-						Kind: upstream.KindPlain,
-						Plain: PlainUpstream{
-							Addr: "udp://1.0.0.1:53",
+						Kind: &configpb.Upstream_Tcp{
+							Tcp: &configpb.TcpUpstream{
+								Addr: "1.1.1.1:53",
+							},
 						},
 					},
 				},
-				Domains: []string{
-					"*.",
+				Source: []*configpb.Source{
+					{
+						Kind: &configpb.Source_Static{
+							Static: &configpb.StaticSource{
+								Domain: []string{
+									"*.",
+								},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -69,14 +65,10 @@ func Load(configs ...string) (*Config, error) {
 		return nil, err
 	}
 
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid config: %w", err)
-	}
-
-	return cfg, nil
+	return newRuntime(cfg)
 }
 
-func loadConfigs(cfg *Config, paths ...string) error {
+func loadConfigs(cfg *configpb.Config, paths ...string) error {
 	for _, p := range paths {
 		if p == "" {
 			continue
@@ -90,11 +82,11 @@ func loadConfigs(cfg *Config, paths ...string) error {
 	return nil
 }
 
-func loadConfig(cfg *Config, path string) error {
+func loadConfig(cfg *configpb.Config, path string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("read config: %w", err)
 	}
 
-	return yaml.UnmarshalWithOptions(data, cfg, yaml.DisallowUnknownField())
+	return prototext.Unmarshal(data, cfg)
 }

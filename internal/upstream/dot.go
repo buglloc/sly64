@@ -6,9 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/buglloc/certifi"
@@ -117,30 +115,7 @@ func (d *DoT) parseAddr(addr, serverName string) (dotAddr, error) {
 		return dotAddr{}, errors.New("servername can't be empty so far")
 	}
 
-	var uu *url.URL
-	switch {
-	case strings.Contains(addr, "://"):
-		var err error
-		uu, err = url.Parse(addr)
-		if err != nil {
-			return dotAddr{}, fmt.Errorf("parse url: %w", err)
-		}
-	default:
-		uu = &url.URL{
-			Scheme: "tcp-tls",
-			Host:   addr,
-		}
-	}
-
-	var network string
-	switch uu.Scheme {
-	case netTCPTLS:
-		network = uu.Scheme
-	default:
-		return dotAddr{}, fmt.Errorf("unsupported scheme %s", uu.Scheme)
-	}
-
-	if _, portStr, err := net.SplitHostPort(uu.Host); err == nil {
+	if _, portStr, err := net.SplitHostPort(addr); err == nil {
 		port, err := strconv.Atoi(portStr)
 		if err != nil {
 			return dotAddr{}, fmt.Errorf("invalid port %s: %w", portStr, err)
@@ -151,15 +126,15 @@ func (d *DoT) parseAddr(addr, serverName string) (dotAddr, error) {
 		}
 
 		return dotAddr{
-			net:        network,
-			addr:       uu.Host,
+			net:        "tcp-tls",
+			addr:       addr,
 			serverName: serverName,
 		}, nil
 	}
 
 	return dotAddr{
-		net:        network,
-		addr:       fmt.Sprintf("%s:%d", uu.Host, DefaultPlainPort),
+		net:        "tcp-tls",
+		addr:       fmt.Sprintf("%s:%d", addr, DefaultPlainPort),
 		serverName: serverName,
 	}, nil
 }

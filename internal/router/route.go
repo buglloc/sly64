@@ -15,10 +15,11 @@ import (
 
 const maxCNAMEDepth = 10
 
+type RouteSubscribeFn func(routeName string)
 type Route struct {
 	name      string
 	upstreams []upstream.Upstream
-	domains   []string
+	sources   []Source
 	breakers  []*gobreaker.CircuitBreaker[*dns.Msg]
 	finalize  bool
 	dns64     *dns64.DNS64
@@ -28,8 +29,12 @@ type Route struct {
 func NewRoute(opts ...RouteOption) *Route {
 	r := &Route{
 		cache: &nopCache{},
-		domains: []string{
-			"*.",
+		sources: []Source{
+			&StaticSource{
+				domains: []string{
+					"*.",
+				},
+			},
 		},
 	}
 
@@ -44,8 +49,28 @@ func (r *Route) Name() string {
 	return r.name
 }
 
-func (r *Route) Domains() []string {
-	return r.domains
+func (r *Route) Subscribe(fn RouteSubscribeFn) {
+	for _, s := range r.sources {
+		s.Watch(func() {
+			fn(r.name)
+		})
+	}
+}
+
+func (r *Route) Domains(ctx context.Context) ([]string, error) {
+	var errs []error
+	var out []string
+	for i, s := range r.sources {
+		domains, err := s.Domains(ctx)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("get domains from source [%d]: %w", i, err))
+			continue
+		}
+
+		out = append(out, domains...)
+	}
+
+	return out, errors.Join(errs...)
 }
 
 func (r *Route) Close() error {

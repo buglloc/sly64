@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 
 	"github.com/buglloc/sly64/v2/internal/config"
@@ -42,13 +41,8 @@ func Execute() error {
 }
 
 func initRuntime() {
-	cfg, err := config.Load(rootArgs.Configs...)
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "invalid config: %v\n", err)
-		os.Exit(1)
-	}
-
-	runtime, err = cfg.NewRuntime()
+	var err error
+	runtime, err = config.NewRuntime(rootArgs.Configs...)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "unable to create runtime: %v\n", err)
 		os.Exit(1)
@@ -57,5 +51,4 @@ func initRuntime() {
 
 func initLogger() {
 	log.SetOutput(os.Stderr)
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 }

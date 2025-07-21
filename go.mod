@@ -4,7 +4,6 @@ go 1.24.4
 
 require (
 	github.com/buglloc/certifi v0.9.4
-	github.com/goccy/go-yaml v1.18.0
 	github.com/karlseguin/ccache/v3 v3.0.6
 	github.com/miekg/dns v1.1.67
 	github.com/rs/zerolog v1.34.0
@@ -13,6 +12,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/sync v0.16.0
+	google.golang.org/protobuf v1.36.6
 )
 
 require (

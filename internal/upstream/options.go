@@ -31,12 +31,14 @@ type nopOpt struct {
 
 type plainAddrOpt struct {
 	PlainOption
-	addr string
+	addr    string
+	network string
 }
 
-func WithPlainAddr(addr string) PlainOption {
+func WithPlainAddr(addr string, network string) PlainOption {
 	return plainAddrOpt{
-		addr: addr,
+		addr:    addr,
+		network: network,
 	}
 }
 
@@ -69,7 +71,7 @@ func WithDialTimeout(timeout time.Duration) DialOption {
 }
 
 type timeoutOpt struct {
-	DialOption
+	Option
 	timeout time.Duration
 }
 

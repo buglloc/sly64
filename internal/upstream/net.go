@@ -13,15 +13,15 @@ import (
 const (
 	DefaultDialTimeout = 500 * time.Millisecond
 
-	netUDP  = "udp"
-	netUDP4 = "udp4"
-	netUDP6 = "udp6"
+	NetUDP  = "udp"
+	NetUDP4 = "udp4"
+	NetUDP6 = "udp6"
 
-	netTCP  = "tcp"
-	netTCP4 = "tcp4"
-	netTCP6 = "tcp6"
+	NetTCP  = "tcp"
+	NetTCP4 = "tcp4"
+	NetTCP6 = "tcp6"
 
-	netTCPTLS = "tcp-tls"
+	NetTCPTLS = "tcp-tls"
 )
 
 func NewDialer(opts ...DialOption) *net.Dialer {
@@ -69,19 +69,19 @@ func newBindToDeviceControl(dev string) func(ctx context.Context, network, addre
 
 func switchNetwork(cur string) string {
 	switch cur {
-	case netUDP:
-		return netTCP
-	case netUDP4:
-		return netTCP4
-	case netUDP6:
-		return netTCP6
+	case NetUDP:
+		return NetTCP
+	case NetUDP4:
+		return NetTCP4
+	case NetUDP6:
+		return NetTCP6
 
-	case netTCP:
-		return netUDP
-	case netTCP4:
-		return netUDP4
-	case netTCP6:
-		return netUDP6
+	case NetTCP:
+		return NetUDP
+	case NetTCP4:
+		return NetUDP4
+	case NetTCP6:
+		return NetUDP6
 
 	default:
 		return ""

@@ -1,0 +1,157 @@
+syntax = "proto3";
+
+package configpb;
+
+option go_package = "github.com/buglloc/sly64/v2/internal/config/configpb";
+
+import "google/protobuf/duration.proto";
+
+message Config {
+  LogLevel log_level = 1;
+  uint32 max_requests = 2;
+  repeated Listener listener = 10;
+  repeated Route route = 20;
+}
+
+enum LogLevel {
+  LOG_LEVEL_UNSPECIFIED = 0;
+  LOG_LEVEL_DEBUG = 1;
+  LOG_LEVEL_INFO = 2;
+  LOG_LEVEL_WARN = 3;
+  LOG_LEVEL_ERROR = 4;
+  LOG_LEVEL_FATAL = 5;
+  LOG_LEVEL_PANIC = 6;
+  LOG_LEVEL_DISABLED = 7;
+}
+
+enum Net {
+  NET_UNSPECIFIED = 0;
+  NET_UDP = 1;
+  NET_TCP = 2;
+}
+
+message Listener {
+  // Listening address, e.g., "127.0.0.1:5553"
+  string addr = 1;
+
+  // Network protocol: TCP or UDP
+  Net net = 2;
+
+  // Request read timeout
+  google.protobuf.Duration read_timeout = 3;
+
+  // Response write timeout
+  google.protobuf.Duration write_timeout = 4;
+}
+
+message Route {
+  // Route name, e.g., "semi-freedom"
+  string name = 1;
+
+  // Finalize A/AAAA records (resolves CNAMEs, etc.)
+  bool finalize = 2;
+
+  // DNS64 config to synthesize IPv6 addresses
+  Dns64 dns64 = 3;
+
+  // Cache configuration
+  Cache cache = 4;
+
+  // List of upstream resolvers
+  repeated Upstream upstream = 5;
+
+  // Routing sources used for this route
+  repeated Source source = 6;
+}
+
+message Dns64 {
+  // Prefix, e.g., "64:ff9b::/96"
+  string prefix = 1;
+}
+
+message Cache {
+  uint32 max_items = 1;
+  uint32 min_ttl = 2;
+  uint32 max_ttl = 3;
+}
+
+message Upstream {
+  oneof kind {
+    // Plain UDP upstream
+    UdpUpstream udp = 10;
+
+    // Plain TCP upstream
+    TcpUpstream tcp = 20;
+
+    // DNS-over-TLS upstream
+    DotUpstream dot = 30;
+  }
+}
+
+message UdpUpstream {
+  // Address, e.g., "1.1.1.1:53" or "1.1.1.1"
+  string addr = 1;
+
+  // Dial timeout
+  google.protobuf.Duration dial_timeout = 2;
+
+  // Query timeout
+  google.protobuf.Duration timeout = 3;
+
+  // Disable UDP → TCP fallback
+  bool no_tcp_fallback = 4;
+
+  // Network interface to use
+  string iface = 5;
+}
+
+message TcpUpstream {
+  // Address, e.g., "1.1.1.1:53" or "1.1.1.1"
+  string addr = 1;
+
+  // Dial timeout
+  google.protobuf.Duration dial_timeout = 2;
+
+  // Query timeout
+  google.protobuf.Duration timeout = 3;
+
+  // Network interface to use
+  string iface = 5;
+}
+
+message DotUpstream {
+  // Address, e.g., "1.1.1.1:853" or "1.1.1.1"
+  string addr = 1;
+
+  // Server name for TLS verification, e.g., "one.one.one.one"
+  string server_name = 2;
+
+  // Dial timeout
+  google.protobuf.Duration dial_timeout = 3;
+
+  // Query timeout
+  google.protobuf.Duration timeout = 4;
+
+  // Network interface to use
+  string iface = 5;
+}
+
+message Source {
+  oneof kind {
+    StaticSource static = 10;
+    FileSource file = 20;
+  }
+}
+
+message StaticSource {
+  // List of domains to match
+  repeated string domain = 1;
+}
+
+message FileSource {
+  // Path to the file to load
+  string path = 1;
+
+  // Reload interval (based on mtime and content)
+  google.protobuf.Duration reload_interval = 4;
+}

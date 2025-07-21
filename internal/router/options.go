@@ -1,6 +1,8 @@
 package router
 
 import (
+	"time"
+
 	"github.com/miekg/dns"
 	"github.com/rs/zerolog/log"
 	"github.com/sony/gobreaker/v2"
@@ -43,13 +45,13 @@ func WithRouteUpstreams(upstreams ...upstream.Upstream) RouteOption {
 	}
 }
 
-func WithRouteDomains(domains ...string) RouteOption {
+func WithRouteSource(sources ...Source) RouteOption {
 	return func(r *Route) {
-		if len(domains) == 0 {
+		if len(sources) == 0 {
 			return
 		}
 
-		r.domains = domains
+		r.sources = sources
 	}
 }
 
@@ -62,5 +64,13 @@ func WithRouteDNS64(d64 *dns64.DNS64) RouteOption {
 func WithRouteFinalize(finalize bool) RouteOption {
 	return func(r *Route) {
 		r.finalize = finalize
+	}
+}
+
+type FileSourceOption func(s *FileSource)
+
+func WithFileSourceReloadInterval(interval time.Duration) FileSourceOption {
+	return func(s *FileSource) {
+		s.reloadInterval = interval
 	}
 }

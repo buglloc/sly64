@@ -1,38 +1,48 @@
 package config
 
 import (
-	"context"
-	"fmt"
-
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
+
+	"github.com/buglloc/sly64/v2/internal/config/configpb"
 )
 
 type Runtime struct {
-	Config     *Config
-	toShutdown []shutdowner
+	Config *configpb.Config
 }
 
-func newRuntime(c *Config) (*Runtime, error) {
+func newRuntime(cfg *configpb.Config) (*Runtime, error) {
 	r := &Runtime{
-		Config: c,
+		Config: cfg,
 	}
 
-	zerolog.SetGlobalLevel(r.Config.LogLevel)
+	zerolog.SetGlobalLevel(protoLogLevelToZero(r.Config.LogLevel))
 	return r, nil
 }
 
-func (r *Runtime) Shutdown(ctx context.Context) {
-	for _, s := range r.toShutdown {
-		if err := s.Shutdown(ctx); err != nil {
-			log.Warn().
-				Err(err).
-				Str("shutdowner", fmt.Sprintf("%T", s)).
-				Msg("unable to shutdown")
-		}
-	}
-}
+func protoLogLevelToZero(lvl configpb.LogLevel) zerolog.Level {
+	switch lvl {
+	case configpb.LogLevel_LOG_LEVEL_DEBUG:
+		return zerolog.DebugLevel
 
-type shutdowner interface {
-	Shutdown(ctx context.Context) error
+	case configpb.LogLevel_LOG_LEVEL_INFO:
+		return zerolog.InfoLevel
+
+	case configpb.LogLevel_LOG_LEVEL_WARN:
+		return zerolog.WarnLevel
+
+	case configpb.LogLevel_LOG_LEVEL_ERROR:
+		return zerolog.ErrorLevel
+
+	case configpb.LogLevel_LOG_LEVEL_FATAL:
+		return zerolog.FatalLevel
+
+	case configpb.LogLevel_LOG_LEVEL_PANIC:
+		return zerolog.PanicLevel
+
+	case configpb.LogLevel_LOG_LEVEL_DISABLED:
+		return zerolog.Disabled
+
+	default:
+		return zerolog.InfoLevel
+	}
 }

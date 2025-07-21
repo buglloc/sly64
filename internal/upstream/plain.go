@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/miekg/dns"
@@ -33,9 +31,10 @@ func (a plainAddr) String() string {
 }
 
 type Plain struct {
-	addr    plainAddr
-	dialer  *net.Dialer
-	timeout time.Duration
+	addr        plainAddr
+	canFallback bool
+	dialer      *net.Dialer
+	timeout     time.Duration
 }
 
 func NewPlain(opts ...Option) (*Plain, error) {
@@ -44,7 +43,8 @@ func NewPlain(opts ...Option) (*Plain, error) {
 			net:  DefaultPlainNetwork,
 			addr: DefaultPlainAddr,
 		},
-		timeout: DefaultPlainTimeout,
+		canFallback: true,
+		timeout:     DefaultPlainTimeout,
 	}
 
 	var dialOpts []DialOption
@@ -56,7 +56,7 @@ func NewPlain(opts ...Option) (*Plain, error) {
 
 		switch o := opt.(type) {
 		case plainAddrOpt:
-			addr, err := p.parseAddr(o.addr)
+			addr, err := p.parseAddr(o.addr, o.network)
 			if err != nil {
 				return nil, fmt.Errorf("invalid upstream addr %q: %w", o.addr, err)
 			}
@@ -79,12 +79,19 @@ func NewPlain(opts ...Option) (*Plain, error) {
 
 func (p *Plain) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 	rsp, err := p.exchange(ctx, req, p.addr.net, p.addr.addr)
+	if err == nil {
+		return rsp, nil
+	}
+
 	switch p.addr.net {
-	case netUDP, netUDP4, netUDP6:
-		return rsp, err
+	case NetUDP, NetUDP4, NetUDP6:
+		return nil, err
 	}
 
 	switch {
+	case !p.canFallback:
+		return nil, err
+
 	case errors.Is(err, ErrMalformedRsp):
 		log.Ctx(ctx).
 			Info().
@@ -94,6 +101,7 @@ func (p *Plain) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 			Msg("plain response is malformed, using tcp")
 
 		return p.exchange(ctx, req, switchNetwork(p.addr.net), p.addr.addr)
+
 	case rsp.Truncated:
 		log.Ctx(ctx).
 			Info().
@@ -103,6 +111,7 @@ func (p *Plain) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 			Msg("plain response is truncated, using tcp")
 
 		return p.exchange(ctx, req, switchNetwork(p.addr.net), p.addr.addr)
+
 	default:
 		return nil, err
 	}
@@ -131,31 +140,16 @@ func (p *Plain) Close() error {
 	return nil
 }
 
-func (p *Plain) parseAddr(addr string) (plainAddr, error) {
-	var uu *url.URL
-	switch {
-	case strings.Contains(addr, "://"):
-		var err error
-		uu, err = url.Parse(addr)
-		if err != nil {
-			return plainAddr{}, fmt.Errorf("parse url: %w", err)
-		}
+func (p *Plain) parseAddr(addr string, network string) (plainAddr, error) {
+	switch network {
+	case NetUDP, NetUDP4, NetUDP6, NetTCP, NetTCP4, NetTCP6:
+		// pass
+
 	default:
-		uu = &url.URL{
-			Scheme: "udp",
-			Host:   addr,
-		}
+		return plainAddr{}, fmt.Errorf("unsupported network %s", network)
 	}
 
-	var network string
-	switch uu.Scheme {
-	case netUDP, netUDP4, netUDP6, netTCP, netTCP4, netTCP6:
-		network = uu.Scheme
-	default:
-		return plainAddr{}, fmt.Errorf("unsupported scheme %s", uu.Scheme)
-	}
-
-	if _, portStr, err := net.SplitHostPort(uu.Host); err == nil {
+	if _, portStr, err := net.SplitHostPort(addr); err == nil {
 		port, err := strconv.Atoi(portStr)
 		if err != nil {
 			return plainAddr{}, fmt.Errorf("invalid port %s: %w", portStr, err)
@@ -167,12 +161,12 @@ func (p *Plain) parseAddr(addr string) (plainAddr, error) {
 
 		return plainAddr{
 			net:  network,
-			addr: uu.Host,
+			addr: addr,
 		}, nil
 	}
 
 	return plainAddr{
 		net:  network,
-		addr: fmt.Sprintf("%s:%d", uu.Host, DefaultPlainPort),
+		addr: fmt.Sprintf("%s:%d", addr, DefaultPlainPort),
 	}, nil
 }
