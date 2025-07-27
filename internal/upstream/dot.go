@@ -3,6 +3,7 @@ package upstream
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -38,8 +39,9 @@ func (a dotAddr) String() string {
 type DoT struct {
 	addr      dotAddr
 	dialer    *net.Dialer
-	timeout   time.Duration
 	tlsConfig *tls.Config
+	dnsc      *dns.Client
+	pool      ConnPool
 }
 
 func NewDoT(opts ...Option) (*DoT, error) {
@@ -48,14 +50,17 @@ func NewDoT(opts ...Option) (*DoT, error) {
 			net:  DefaultDoTNetwork,
 			addr: DefaultDoTAddr,
 		},
-		timeout: DefaultPlainTimeout,
 		tlsConfig: &tls.Config{
 			RootCAs:            certifi.NewCertPool(),
 			ClientSessionCache: tls.NewLRUClientSessionCache(0),
 		},
+		dnsc: &dns.Client{
+			Timeout: DefaultDoTTimeout,
+		},
 	}
 
 	var dialOpts []DialOption
+	poolSize := int32(0)
 	for _, opt := range opts {
 		if o, ok := opt.(DialOption); ok {
 			dialOpts = append(dialOpts, o)
@@ -71,11 +76,14 @@ func NewDoT(opts ...Option) (*DoT, error) {
 			d.addr = addr
 
 		case timeoutOpt:
-			d.timeout = o.timeout
+			d.dnsc.Timeout = o.timeout
 
 		case tlsCfgOpt:
 			d.tlsConfig = o.cfg
 			d.addr.serverName = o.cfg.ServerName
+
+		case poolOpt:
+			poolSize = o.maxItems
 
 		case nopOpt:
 			//pass
@@ -86,23 +94,49 @@ func NewDoT(opts ...Option) (*DoT, error) {
 	}
 
 	d.dialer = NewDialer(dialOpts...)
+	dialerFn := func(ctx context.Context) (net.Conn, error) {
+		fmt.Println("new conn")
+		return tls.DialWithDialer(d.dialer, "tcp", d.addr.addr, d.tlsConfig)
+	}
+
+	if poolSize > 0 {
+		pool, err := NewPuddlePool(dialerFn, poolSize)
+		if err != nil {
+			return nil, fmt.Errorf("create puddle pool: %w", err)
+		}
+
+		d.pool = pool
+	} else {
+		d.pool = NewNetPool(dialerFn)
+	}
+
 	return d, nil
 }
 
 func (d *DoT) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
-	dnsc := &dns.Client{
-		Net:       d.addr.net,
-		Timeout:   d.timeout,
-		TLSConfig: d.tlsConfig,
-		Dialer:    d.dialer,
+	var errs []error
+	for range 2 {
+		conn, err := d.pool.Acquire(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("acquire DoT conn from pool: %w", err)
+		}
+
+		rsp, _, err := d.dnsc.ExchangeWithConnContext(ctx, req, &dns.Conn{
+			Conn: conn,
+		})
+		if err != nil {
+			// Connection failed, destroy it and try again
+			conn.Destroy()
+			errs = append(errs, err)
+			continue
+		}
+
+		// Success, return connection to pool
+		conn.Close()
+		return rsp, validateResponse(req, rsp)
 	}
 
-	rsp, _, err := dnsc.ExchangeContext(ctx, req, d.addr.addr)
-	if err != nil {
-		return nil, fmt.Errorf("exchange with %s: %w", d.addr, err)
-	}
-
-	return rsp, validateResponse(req, rsp)
+	return nil, fmt.Errorf("exchange failed after retries: %w", errors.Join(errs...))
 }
 
 func (d *DoT) Address() string {
@@ -110,6 +144,7 @@ func (d *DoT) Address() string {
 }
 
 func (d *DoT) Close() error {
+	d.pool.Close()
 	return nil
 }
 

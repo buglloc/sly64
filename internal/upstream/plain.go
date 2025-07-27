@@ -35,6 +35,7 @@ type Plain struct {
 	canFallback bool
 	dialer      *net.Dialer
 	timeout     time.Duration
+	pool        ConnPool
 }
 
 func NewPlain(opts ...Option) (*Plain, error) {
@@ -48,6 +49,7 @@ func NewPlain(opts ...Option) (*Plain, error) {
 	}
 
 	var dialOpts []DialOption
+	poolSize := int32(0)
 	for _, opt := range opts {
 		if o, ok := opt.(DialOption); ok {
 			dialOpts = append(dialOpts, o)
@@ -65,6 +67,9 @@ func NewPlain(opts ...Option) (*Plain, error) {
 		case timeoutOpt:
 			p.timeout = o.timeout
 
+		case poolOpt:
+			poolSize = o.maxItems
+
 		case nopOpt:
 			//pass
 
@@ -74,10 +79,66 @@ func NewPlain(opts ...Option) (*Plain, error) {
 	}
 
 	p.dialer = NewDialer(dialOpts...)
+	dialerFn := func(ctx context.Context) (net.Conn, error) {
+		return p.dialer.DialContext(ctx, p.addr.net, p.addr.addr)
+	}
+
+	if poolSize > 0 {
+		pool, err := NewPuddlePool(dialerFn, poolSize)
+		if err != nil {
+			return nil, fmt.Errorf("create puddle pool: %w", err)
+		}
+
+		p.pool = pool
+	} else {
+		p.pool = NewNetPool(dialerFn)
+	}
+
 	return p, nil
 }
 
 func (p *Plain) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
+	// Use pool for TCP-based networks
+	switch p.addr.net {
+	case NetTCP, NetTCP4, NetTCP6:
+		return p.exchangeWithPool(ctx, req)
+
+	default:
+		return p.exchangeUDP(ctx, req)
+	}
+}
+
+func (p *Plain) exchangeWithPool(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
+	dnsc := &dns.Client{
+		Timeout: p.timeout,
+	}
+
+	var errs []error
+	for range 2 {
+		conn, err := p.pool.Acquire(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("acquire DoT conn from pool: %w", err)
+		}
+
+		rsp, _, err := dnsc.ExchangeWithConnContext(ctx, req, &dns.Conn{
+			Conn: conn,
+		})
+		if err != nil {
+			// Connection failed, destroy it and try again
+			conn.Destroy()
+			errs = append(errs, err)
+			continue
+		}
+
+		// Success, return connection to pool
+		conn.Close()
+		return rsp, validateResponse(req, rsp)
+	}
+
+	return nil, fmt.Errorf("exchange failed after retries: %w", errors.Join(errs...))
+}
+
+func (p *Plain) exchangeUDP(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 	rsp, err := p.exchange(ctx, req, p.addr.net, p.addr.addr)
 	if err == nil {
 		return rsp, nil
@@ -102,7 +163,7 @@ func (p *Plain) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 
 		return p.exchange(ctx, req, switchNetwork(p.addr.net), p.addr.addr)
 
-	case rsp.Truncated:
+	case rsp != nil && rsp.Truncated:
 		log.Ctx(ctx).
 			Info().
 			Str("source", "upstream_plain").
@@ -137,6 +198,7 @@ func (p *Plain) Address() string {
 }
 
 func (p *Plain) Close() error {
+	p.pool.Close()
 	return nil
 }
 

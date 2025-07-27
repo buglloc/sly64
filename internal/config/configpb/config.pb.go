@@ -661,7 +661,9 @@ type TcpUpstream struct {
 	// Query timeout
 	Timeout *durationpb.Duration `protobuf:"bytes,3,opt,name=timeout,proto3" json:"timeout,omitempty"`
 	// Network interface to use
-	Iface         string `protobuf:"bytes,5,opt,name=iface,proto3" json:"iface,omitempty"`
+	Iface string `protobuf:"bytes,5,opt,name=iface,proto3" json:"iface,omitempty"`
+	// Connection pool config
+	ConnPool      *ConnPool `protobuf:"bytes,6,opt,name=conn_pool,json=connPool,proto3" json:"conn_pool,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -724,6 +726,13 @@ func (x *TcpUpstream) GetIface() string {
 	return ""
 }
 
+func (x *TcpUpstream) GetConnPool() *ConnPool {
+	if x != nil {
+		return x.ConnPool
+	}
+	return nil
+}
+
 type DotUpstream struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Address, e.g., "1.1.1.1:853" or "1.1.1.1"
@@ -735,7 +744,9 @@ type DotUpstream struct {
 	// Network interface to use
 	Iface string `protobuf:"bytes,4,opt,name=iface,proto3" json:"iface,omitempty"`
 	// TLS config
-	Tls           *TLS `protobuf:"bytes,5,opt,name=tls,proto3" json:"tls,omitempty"`
+	Tls *TLS `protobuf:"bytes,5,opt,name=tls,proto3" json:"tls,omitempty"`
+	// Connection pool config
+	ConnPool      *ConnPool `protobuf:"bytes,6,opt,name=conn_pool,json=connPool,proto3" json:"conn_pool,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -805,6 +816,121 @@ func (x *DotUpstream) GetTls() *TLS {
 	return nil
 }
 
+func (x *DotUpstream) GetConnPool() *ConnPool {
+	if x != nil {
+		return x.ConnPool
+	}
+	return nil
+}
+
+type TLS struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Path to the CA certificate file
+	CaCert string `protobuf:"bytes,1,opt,name=ca_cert,json=caCert,proto3" json:"ca_cert,omitempty"`
+	// Server name for TLS verification
+	ServerName string `protobuf:"bytes,2,opt,name=server_name,json=serverName,proto3" json:"server_name,omitempty"`
+	// Controls whether a client verifies the server's certificate chain and host name.
+	InsecureSkipVerify bool `protobuf:"varint,3,opt,name=insecure_skip_verify,json=insecureSkipVerify,proto3" json:"insecure_skip_verify,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *TLS) Reset() {
+	*x = TLS{}
+	mi := &file_config_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TLS) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TLS) ProtoMessage() {}
+
+func (x *TLS) ProtoReflect() protoreflect.Message {
+	mi := &file_config_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TLS.ProtoReflect.Descriptor instead.
+func (*TLS) Descriptor() ([]byte, []int) {
+	return file_config_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *TLS) GetCaCert() string {
+	if x != nil {
+		return x.CaCert
+	}
+	return ""
+}
+
+func (x *TLS) GetServerName() string {
+	if x != nil {
+		return x.ServerName
+	}
+	return ""
+}
+
+func (x *TLS) GetInsecureSkipVerify() bool {
+	if x != nil {
+		return x.InsecureSkipVerify
+	}
+	return false
+}
+
+type ConnPool struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Maximum items in pool, zero mean no pool
+	MaxItems      int32 `protobuf:"varint,1,opt,name=max_items,json=maxItems,proto3" json:"max_items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConnPool) Reset() {
+	*x = ConnPool{}
+	mi := &file_config_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConnPool) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConnPool) ProtoMessage() {}
+
+func (x *ConnPool) ProtoReflect() protoreflect.Message {
+	mi := &file_config_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConnPool.ProtoReflect.Descriptor instead.
+func (*ConnPool) Descriptor() ([]byte, []int) {
+	return file_config_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ConnPool) GetMaxItems() int32 {
+	if x != nil {
+		return x.MaxItems
+	}
+	return 0
+}
+
 type Source struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Kind:
@@ -818,7 +944,7 @@ type Source struct {
 
 func (x *Source) Reset() {
 	*x = Source{}
-	mi := &file_config_proto_msgTypes[9]
+	mi := &file_config_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -830,7 +956,7 @@ func (x *Source) String() string {
 func (*Source) ProtoMessage() {}
 
 func (x *Source) ProtoReflect() protoreflect.Message {
-	mi := &file_config_proto_msgTypes[9]
+	mi := &file_config_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -843,7 +969,7 @@ func (x *Source) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Source.ProtoReflect.Descriptor instead.
 func (*Source) Descriptor() ([]byte, []int) {
-	return file_config_proto_rawDescGZIP(), []int{9}
+	return file_config_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *Source) GetKind() isSource_Kind {
@@ -897,7 +1023,7 @@ type StaticSource struct {
 
 func (x *StaticSource) Reset() {
 	*x = StaticSource{}
-	mi := &file_config_proto_msgTypes[10]
+	mi := &file_config_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -909,7 +1035,7 @@ func (x *StaticSource) String() string {
 func (*StaticSource) ProtoMessage() {}
 
 func (x *StaticSource) ProtoReflect() protoreflect.Message {
-	mi := &file_config_proto_msgTypes[10]
+	mi := &file_config_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -922,7 +1048,7 @@ func (x *StaticSource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StaticSource.ProtoReflect.Descriptor instead.
 func (*StaticSource) Descriptor() ([]byte, []int) {
-	return file_config_proto_rawDescGZIP(), []int{10}
+	return file_config_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *StaticSource) GetDomain() []string {
@@ -944,7 +1070,7 @@ type FileSource struct {
 
 func (x *FileSource) Reset() {
 	*x = FileSource{}
-	mi := &file_config_proto_msgTypes[11]
+	mi := &file_config_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -956,7 +1082,7 @@ func (x *FileSource) String() string {
 func (*FileSource) ProtoMessage() {}
 
 func (x *FileSource) ProtoReflect() protoreflect.Message {
-	mi := &file_config_proto_msgTypes[11]
+	mi := &file_config_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -969,7 +1095,7 @@ func (x *FileSource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileSource.ProtoReflect.Descriptor instead.
 func (*FileSource) Descriptor() ([]byte, []int) {
-	return file_config_proto_rawDescGZIP(), []int{11}
+	return file_config_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *FileSource) GetPath() string {
@@ -984,69 +1110,6 @@ func (x *FileSource) GetReloadInterval() *durationpb.Duration {
 		return x.ReloadInterval
 	}
 	return nil
-}
-
-type TLS struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Path to the CA certificate file
-	CaCert string `protobuf:"bytes,1,opt,name=ca_cert,json=caCert,proto3" json:"ca_cert,omitempty"`
-	// Server name for TLS verification
-	ServerName string `protobuf:"bytes,2,opt,name=server_name,json=serverName,proto3" json:"server_name,omitempty"`
-	// Controls whether a client verifies the server's certificate chain and host name.
-	InsecureSkipVerify bool `protobuf:"varint,3,opt,name=insecure_skip_verify,json=insecureSkipVerify,proto3" json:"insecure_skip_verify,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
-}
-
-func (x *TLS) Reset() {
-	*x = TLS{}
-	mi := &file_config_proto_msgTypes[12]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TLS) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TLS) ProtoMessage() {}
-
-func (x *TLS) ProtoReflect() protoreflect.Message {
-	mi := &file_config_proto_msgTypes[12]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TLS.ProtoReflect.Descriptor instead.
-func (*TLS) Descriptor() ([]byte, []int) {
-	return file_config_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *TLS) GetCaCert() string {
-	if x != nil {
-		return x.CaCert
-	}
-	return ""
-}
-
-func (x *TLS) GetServerName() string {
-	if x != nil {
-		return x.ServerName
-	}
-	return ""
-}
-
-func (x *TLS) GetInsecureSkipVerify() bool {
-	if x != nil {
-		return x.InsecureSkipVerify
-	}
-	return false
 }
 
 var File_config_proto protoreflect.FileDescriptor
@@ -1089,18 +1152,27 @@ const file_config_proto_rawDesc = "" +
 	"\fdial_timeout\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\vdialTimeout\x123\n" +
 	"\atimeout\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\atimeout\x12&\n" +
 	"\x0fno_tcp_fallback\x18\x04 \x01(\bR\rnoTcpFallback\x12\x14\n" +
-	"\x05iface\x18\x05 \x01(\tR\x05iface\"\xaa\x01\n" +
+	"\x05iface\x18\x05 \x01(\tR\x05iface\"\xdb\x01\n" +
 	"\vTcpUpstream\x12\x12\n" +
 	"\x04addr\x18\x01 \x01(\tR\x04addr\x12<\n" +
 	"\fdial_timeout\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\vdialTimeout\x123\n" +
 	"\atimeout\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\atimeout\x12\x14\n" +
-	"\x05iface\x18\x05 \x01(\tR\x05iface\"\xcb\x01\n" +
+	"\x05iface\x18\x05 \x01(\tR\x05iface\x12/\n" +
+	"\tconn_pool\x18\x06 \x01(\v2\x12.configpb.ConnPoolR\bconnPool\"\xfc\x01\n" +
 	"\vDotUpstream\x12\x12\n" +
 	"\x04addr\x18\x01 \x01(\tR\x04addr\x12<\n" +
 	"\fdial_timeout\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\vdialTimeout\x123\n" +
 	"\atimeout\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\atimeout\x12\x14\n" +
 	"\x05iface\x18\x04 \x01(\tR\x05iface\x12\x1f\n" +
-	"\x03tls\x18\x05 \x01(\v2\r.configpb.TLSR\x03tls\"n\n" +
+	"\x03tls\x18\x05 \x01(\v2\r.configpb.TLSR\x03tls\x12/\n" +
+	"\tconn_pool\x18\x06 \x01(\v2\x12.configpb.ConnPoolR\bconnPool\"q\n" +
+	"\x03TLS\x12\x17\n" +
+	"\aca_cert\x18\x01 \x01(\tR\x06caCert\x12\x1f\n" +
+	"\vserver_name\x18\x02 \x01(\tR\n" +
+	"serverName\x120\n" +
+	"\x14insecure_skip_verify\x18\x03 \x01(\bR\x12insecureSkipVerify\"'\n" +
+	"\bConnPool\x12\x1b\n" +
+	"\tmax_items\x18\x01 \x01(\x05R\bmaxItems\"n\n" +
 	"\x06Source\x120\n" +
 	"\x06static\x18\n" +
 	" \x01(\v2\x16.configpb.StaticSourceH\x00R\x06static\x12*\n" +
@@ -1111,12 +1183,7 @@ const file_config_proto_rawDesc = "" +
 	"\n" +
 	"FileSource\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12B\n" +
-	"\x0freload_interval\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\x0ereloadInterval\"q\n" +
-	"\x03TLS\x12\x17\n" +
-	"\aca_cert\x18\x01 \x01(\tR\x06caCert\x12\x1f\n" +
-	"\vserver_name\x18\x02 \x01(\tR\n" +
-	"serverName\x120\n" +
-	"\x14insecure_skip_verify\x18\x03 \x01(\bR\x12insecureSkipVerify*\xb9\x01\n" +
+	"\x0freload_interval\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\x0ereloadInterval*\xb9\x01\n" +
 	"\bLogLevel\x12\x19\n" +
 	"\x15LOG_LEVEL_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fLOG_LEVEL_DEBUG\x10\x01\x12\x12\n" +
@@ -1144,7 +1211,7 @@ func file_config_proto_rawDescGZIP() []byte {
 }
 
 var file_config_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_config_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_config_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_config_proto_goTypes = []any{
 	(LogLevel)(0),               // 0: configpb.LogLevel
 	(Net)(0),                    // 1: configpb.Net
@@ -1157,41 +1224,44 @@ var file_config_proto_goTypes = []any{
 	(*UdpUpstream)(nil),         // 8: configpb.UdpUpstream
 	(*TcpUpstream)(nil),         // 9: configpb.TcpUpstream
 	(*DotUpstream)(nil),         // 10: configpb.DotUpstream
-	(*Source)(nil),              // 11: configpb.Source
-	(*StaticSource)(nil),        // 12: configpb.StaticSource
-	(*FileSource)(nil),          // 13: configpb.FileSource
-	(*TLS)(nil),                 // 14: configpb.TLS
-	(*durationpb.Duration)(nil), // 15: google.protobuf.Duration
+	(*TLS)(nil),                 // 11: configpb.TLS
+	(*ConnPool)(nil),            // 12: configpb.ConnPool
+	(*Source)(nil),              // 13: configpb.Source
+	(*StaticSource)(nil),        // 14: configpb.StaticSource
+	(*FileSource)(nil),          // 15: configpb.FileSource
+	(*durationpb.Duration)(nil), // 16: google.protobuf.Duration
 }
 var file_config_proto_depIdxs = []int32{
 	0,  // 0: configpb.Config.log_level:type_name -> configpb.LogLevel
 	3,  // 1: configpb.Config.listener:type_name -> configpb.Listener
 	4,  // 2: configpb.Config.route:type_name -> configpb.Route
 	1,  // 3: configpb.Listener.net:type_name -> configpb.Net
-	15, // 4: configpb.Listener.read_timeout:type_name -> google.protobuf.Duration
-	15, // 5: configpb.Listener.write_timeout:type_name -> google.protobuf.Duration
+	16, // 4: configpb.Listener.read_timeout:type_name -> google.protobuf.Duration
+	16, // 5: configpb.Listener.write_timeout:type_name -> google.protobuf.Duration
 	5,  // 6: configpb.Route.dns64:type_name -> configpb.Dns64
 	6,  // 7: configpb.Route.cache:type_name -> configpb.Cache
 	7,  // 8: configpb.Route.upstream:type_name -> configpb.Upstream
-	11, // 9: configpb.Route.source:type_name -> configpb.Source
+	13, // 9: configpb.Route.source:type_name -> configpb.Source
 	8,  // 10: configpb.Upstream.udp:type_name -> configpb.UdpUpstream
 	9,  // 11: configpb.Upstream.tcp:type_name -> configpb.TcpUpstream
 	10, // 12: configpb.Upstream.dot:type_name -> configpb.DotUpstream
-	15, // 13: configpb.UdpUpstream.dial_timeout:type_name -> google.protobuf.Duration
-	15, // 14: configpb.UdpUpstream.timeout:type_name -> google.protobuf.Duration
-	15, // 15: configpb.TcpUpstream.dial_timeout:type_name -> google.protobuf.Duration
-	15, // 16: configpb.TcpUpstream.timeout:type_name -> google.protobuf.Duration
-	15, // 17: configpb.DotUpstream.dial_timeout:type_name -> google.protobuf.Duration
-	15, // 18: configpb.DotUpstream.timeout:type_name -> google.protobuf.Duration
-	14, // 19: configpb.DotUpstream.tls:type_name -> configpb.TLS
-	12, // 20: configpb.Source.static:type_name -> configpb.StaticSource
-	13, // 21: configpb.Source.file:type_name -> configpb.FileSource
-	15, // 22: configpb.FileSource.reload_interval:type_name -> google.protobuf.Duration
-	23, // [23:23] is the sub-list for method output_type
-	23, // [23:23] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	16, // 13: configpb.UdpUpstream.dial_timeout:type_name -> google.protobuf.Duration
+	16, // 14: configpb.UdpUpstream.timeout:type_name -> google.protobuf.Duration
+	16, // 15: configpb.TcpUpstream.dial_timeout:type_name -> google.protobuf.Duration
+	16, // 16: configpb.TcpUpstream.timeout:type_name -> google.protobuf.Duration
+	12, // 17: configpb.TcpUpstream.conn_pool:type_name -> configpb.ConnPool
+	16, // 18: configpb.DotUpstream.dial_timeout:type_name -> google.protobuf.Duration
+	16, // 19: configpb.DotUpstream.timeout:type_name -> google.protobuf.Duration
+	11, // 20: configpb.DotUpstream.tls:type_name -> configpb.TLS
+	12, // 21: configpb.DotUpstream.conn_pool:type_name -> configpb.ConnPool
+	14, // 22: configpb.Source.static:type_name -> configpb.StaticSource
+	15, // 23: configpb.Source.file:type_name -> configpb.FileSource
+	16, // 24: configpb.FileSource.reload_interval:type_name -> google.protobuf.Duration
+	25, // [25:25] is the sub-list for method output_type
+	25, // [25:25] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_config_proto_init() }
@@ -1204,7 +1274,7 @@ func file_config_proto_init() {
 		(*Upstream_Tcp)(nil),
 		(*Upstream_Dot)(nil),
 	}
-	file_config_proto_msgTypes[9].OneofWrappers = []any{
+	file_config_proto_msgTypes[11].OneofWrappers = []any{
 		(*Source_Static)(nil),
 		(*Source_File)(nil),
 	}
@@ -1214,7 +1284,7 @@ func file_config_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_config_proto_rawDesc), len(file_config_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   13,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
