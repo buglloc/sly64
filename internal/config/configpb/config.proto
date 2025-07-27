@@ -154,7 +154,7 @@ message TLS {
 }
 
 message ConnPool {
-  // Maximum items in pool, zero mean no pool
+  // Maximum items in pool, <= 1 mean no pool
   int32 max_items = 1;
 }
 

@@ -888,7 +888,7 @@ func (x *TLS) GetInsecureSkipVerify() bool {
 
 type ConnPool struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Maximum items in pool, zero mean no pool
+	// Maximum items in pool, <= 1 mean no pool
 	MaxItems      int32 `protobuf:"varint,1,opt,name=max_items,json=maxItems,proto3" json:"max_items,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

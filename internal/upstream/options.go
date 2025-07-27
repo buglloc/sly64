@@ -117,7 +117,7 @@ type poolOpt struct {
 }
 
 func WithConnPool(maxItems int32) Option {
-	if maxItems == 0 {
+	if maxItems <= 1 {
 		maxItems = DefaultPoolSize
 	}
 
