@@ -7,6 +7,7 @@ import (
 type TrieNode struct {
 	children map[string]*TrieNode
 	route    *Route
+	wildcard bool
 }
 
 type RouteTrie struct {
@@ -20,9 +21,15 @@ func NewRouteTrie() *RouteTrie {
 }
 
 func (t *RouteTrie) Insert(domain string, route *Route) {
+	// Drop "*. " prefix if present to normalize wildcard patterns
+	domain = strings.TrimPrefix(domain, "*.")
+
+	// Remove trailing dot and add it back to normalize
 	domain = strings.TrimRight(domain, ".") + "."
+
 	labels := splitDomain(domain)
 	node := t.root
+
 	for _, label := range labels {
 		if node.children[label] == nil {
 			node.children[label] = &TrieNode{children: make(map[string]*TrieNode)}
@@ -30,6 +37,7 @@ func (t *RouteTrie) Insert(domain string, route *Route) {
 		node = node.children[label]
 	}
 
+	node.wildcard = true
 	node.route = route
 }
 
@@ -42,27 +50,22 @@ func findTrieLabel(node *TrieNode, labels []string, idx int) *Route {
 	if node == nil {
 		return nil
 	}
+
 	if idx == len(labels) {
 		if node.route != nil {
 			return node.route
 		}
-
-		if child, ok := node.children["*"]; ok && child.route != nil {
-			return child.route
-		}
-
 		return nil
 	}
 
-	label := labels[idx]
-	if child, ok := node.children[label]; ok {
+	if child, ok := node.children[labels[idx]]; ok {
 		if route := findTrieLabel(child, labels, idx+1); route != nil {
 			return route
 		}
 	}
 
-	if child, ok := node.children["*"]; ok {
-		return child.route
+	if node.wildcard {
+		return node.route
 	}
 
 	return nil

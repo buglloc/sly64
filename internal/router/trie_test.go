@@ -18,27 +18,29 @@ func TestRouteTrie(t *testing.T) {
 	}
 
 	trie := router.NewRouteTrie()
-	trie.Insert("foo.example.com", routes[0])
-	trie.Insert("*.example.com", routes[1])
-	trie.Insert("bar.foo.example.com", routes[2])
-	trie.Insert("example.com", routes[3])
-	trie.Insert("*.wild.com", routes[4])
+	// Both wildcard and non-wildcard syntax work the same way
+	// "*. " prefix is dropped during insertion
+	trie.Insert("foo.example.com", routes[0])     // stored as foo.example.com
+	trie.Insert("*.example.com", routes[1])       // stored as example.com
+	trie.Insert("bar.foo.example.com", routes[2]) // stored as bar.foo.example.com
+	trie.Insert("example.com", routes[3])         // stored as example.com (overwrites routes[1])
+	trie.Insert("wild.com", routes[4])            // stored as wild.com
 
 	tests := []struct {
 		domain string
 		expect *router.Route
 	}{
-		{"foo.example.com.", routes[0]},         // exact
-		{"bar.example.com.", routes[1]},         // wildcard
-		{"baz.foo.example.com.", routes[1]},     // wildcard matches any subdomain
-		{"example.com.", routes[3]},             // exact
-		{"bar.foo.example.com.", routes[2]},     // exact
-		{"baz.bar.foo.example.com.", routes[1]}, // wildcard
+		{"foo.example.com.", routes[0]},         // exact match
+		{"bar.example.com.", routes[3]},         // matches example.com pattern
+		{"baz.foo.example.com.", routes[0]},     // matches foo.example.com pattern
+		{"example.com.", routes[3]},             // exact match
+		{"bar.foo.example.com.", routes[2]},     // exact match
+		{"baz.bar.foo.example.com.", routes[2]}, // matches bar.foo.example.com pattern
 		{"com.", nil},                           // no match
 		{"some.com.", nil},                      // no match
-		{"x.y.wild.com.", routes[4]},            // multi-wildcard
-		{"foo.wild.com.", routes[4]},            // wildcard
-		{"wild.com.", routes[4]},                // no match
+		{"x.y.wild.com.", routes[4]},            // matches wild.com pattern
+		{"foo.wild.com.", routes[4]},            // matches wild.com pattern
+		{"wild.com.", routes[4]},                // exact match
 	}
 
 	for _, test := range tests {
@@ -49,6 +51,7 @@ func TestRouteTrie(t *testing.T) {
 				return
 			}
 
+			require.NotNil(t, got)
 			require.Equal(t, test.expect, got, "expected=%s got=%s", test.expect.Name(), got.Name())
 		})
 	}
