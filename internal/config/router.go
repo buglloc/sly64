@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/buglloc/sly64/v2/internal/config/configpb"
 	"github.com/buglloc/sly64/v2/internal/dns64"
@@ -91,8 +90,7 @@ func (r *Runtime) NewRouter() (*router.Router, error) {
 	return router.NewRouter(routes...)
 }
 
-func routerPatcher(cfg *configpb.Config, path string) error {
-	curDir := filepath.Dir(path)
+func routerPatcher(cfg *configpb.Config, cfgPath string) error {
 	for _, route := range cfg.Route {
 		for _, source := range route.Source {
 			fileSource, ok := source.Kind.(*configpb.Source_File)
@@ -100,15 +98,7 @@ func routerPatcher(cfg *configpb.Config, path string) error {
 				continue
 			}
 
-			if len(fileSource.File.Path) == 0 {
-				continue
-			}
-
-			if filepath.IsAbs(fileSource.File.Path) {
-				continue
-			}
-
-			fileSource.File.Path = filepath.Join(curDir, fileSource.File.Path)
+			fileSource.File.Path = absPath(cfgPath, fileSource.File.Path)
 		}
 	}
 

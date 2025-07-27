@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/buglloc/certifi"
 
@@ -53,19 +52,11 @@ func newCertPool(caCert string) (*x509.CertPool, error) {
 	return out, nil
 }
 
-func patchTLSConfig(cfg *configpb.TLS, path string) error {
+func patchTLSConfig(cfg *configpb.TLS, cfgPath string) error {
 	if cfg == nil {
 		return nil
 	}
 
-	if len(cfg.CaCert) == 0 {
-		return nil
-	}
-
-	if filepath.IsAbs(cfg.CaCert) {
-		return nil
-	}
-
-	cfg.CaCert = filepath.Join(filepath.Dir(path), cfg.CaCert)
+	cfg.CaCert = absPath(cfgPath, cfg.CaCert)
 	return nil
 }
