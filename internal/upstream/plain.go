@@ -55,7 +55,7 @@ func NewPlain(opts ...Option) (*Plain, error) {
 		}
 
 		switch o := opt.(type) {
-		case plainAddrOpt:
+		case addrOpt:
 			addr, err := p.parseAddr(o.addr, o.network)
 			if err != nil {
 				return nil, fmt.Errorf("invalid upstream addr %q: %w", o.addr, err)

@@ -1,6 +1,9 @@
 package upstream
 
-import "time"
+import (
+	"crypto/tls"
+	"time"
+)
 
 type PlainOption interface {
 	isPlainOption()
@@ -29,29 +32,16 @@ type nopOpt struct {
 	Option
 }
 
-type plainAddrOpt struct {
-	PlainOption
+type addrOpt struct {
+	Option
 	addr    string
 	network string
 }
 
-func WithPlainAddr(addr string, network string) PlainOption {
-	return plainAddrOpt{
+func WithAddr(addr string, network string) Option {
+	return addrOpt{
 		addr:    addr,
 		network: network,
-	}
-}
-
-type dotAddrOpt struct {
-	DoTOption
-	addr       string
-	serverName string
-}
-
-func WithDoTAddr(addr, serverName string) DoTOption {
-	return dotAddrOpt{
-		addr:       addr,
-		serverName: serverName,
 	}
 }
 
@@ -97,5 +87,24 @@ func WithIface(iface string) DialOption {
 
 	return ifaceOpt{
 		iface: iface,
+	}
+}
+
+type tlsCfgOpt struct {
+	Option
+	cfg *tls.Config
+}
+
+func WithTLSConfig(cfg *tls.Config) Option {
+	if cfg == nil {
+		return nopOpt{}
+	}
+
+	if cfg.ClientSessionCache == nil {
+		cfg.ClientSessionCache = tls.NewLRUClientSessionCache(0)
+	}
+
+	return tlsCfgOpt{
+		cfg: cfg,
 	}
 }

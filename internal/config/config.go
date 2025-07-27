@@ -14,10 +14,11 @@ const (
 	ShutdownDeadline = 1 * time.Minute
 )
 
-type cfgPatcher func(cfg *configpb.Config, path string) error
+type cfgPatcher func(cfg *configpb.Config, cfgPath string) error
 
 var cfgPatchers = []cfgPatcher{
 	routerPatcher,
+	upstreamPatcher,
 }
 
 func NewRuntime(cfgPath string) (*Runtime, error) {
@@ -76,8 +77,8 @@ func NewRuntime(cfgPath string) (*Runtime, error) {
 	return newRuntime(cfg)
 }
 
-func loadConfig(cfg *configpb.Config, path string) error {
-	data, err := os.ReadFile(path)
+func loadConfig(cfg *configpb.Config, cfgPath string) error {
+	data, err := os.ReadFile(cfgPath)
 	if err != nil {
 		return fmt.Errorf("read config: %w", err)
 	}
@@ -87,7 +88,7 @@ func loadConfig(cfg *configpb.Config, path string) error {
 	}
 
 	for _, p := range cfgPatchers {
-		if err := p(cfg, path); err != nil {
+		if err := p(cfg, cfgPath); err != nil {
 			return fmt.Errorf("patch config: %w", err)
 		}
 	}

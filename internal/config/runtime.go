@@ -1,6 +1,8 @@
 package config
 
 import (
+	"path/filepath"
+
 	"github.com/rs/zerolog"
 
 	"github.com/buglloc/sly64/v2/internal/config/configpb"
@@ -45,4 +47,16 @@ func protoLogLevelToZero(lvl configpb.LogLevel) zerolog.Level {
 	default:
 		return zerolog.InfoLevel
 	}
+}
+
+func absPath(cfgPath string, target string) string {
+	if len(target) == 0 {
+		return target
+	}
+
+	if filepath.IsAbs(target) {
+		return target
+	}
+
+	return filepath.Join(filepath.Dir(cfgPath), target)
 }
