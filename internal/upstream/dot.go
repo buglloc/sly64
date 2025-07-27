@@ -95,7 +95,6 @@ func NewDoT(opts ...Option) (*DoT, error) {
 
 	d.dialer = NewDialer(dialOpts...)
 	dialerFn := func(ctx context.Context) (net.Conn, error) {
-		fmt.Println("new conn")
 		return tls.DialWithDialer(d.dialer, "tcp", d.addr.addr, d.tlsConfig)
 	}
 
