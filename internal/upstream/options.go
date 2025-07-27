@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const DefaultPoolSize = 128
+
 type PlainOption interface {
 	isPlainOption()
 	Option
@@ -106,5 +108,20 @@ func WithTLSConfig(cfg *tls.Config) Option {
 
 	return tlsCfgOpt{
 		cfg: cfg,
+	}
+}
+
+type poolOpt struct {
+	Option
+	maxItems int32
+}
+
+func WithConnPool(maxItems int32) Option {
+	if maxItems <= 1 {
+		maxItems = DefaultPoolSize
+	}
+
+	return poolOpt{
+		maxItems: maxItems,
 	}
 }

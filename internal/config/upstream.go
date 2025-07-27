@@ -23,6 +23,7 @@ func NewUpstream(cfg *configpb.Upstream) (upstream.Upstream, error) {
 			upstream.WithDialTimeout(spec.Tcp.DialTimeout.AsDuration()),
 			upstream.WithTimeout(spec.Tcp.Timeout.AsDuration()),
 			upstream.WithIface(spec.Tcp.Iface),
+			upstream.WithConnPool(spec.Tcp.ConnPool.GetMaxItems()),
 		)
 
 	case *configpb.Upstream_Dot:
@@ -36,6 +37,7 @@ func NewUpstream(cfg *configpb.Upstream) (upstream.Upstream, error) {
 			upstream.WithDialTimeout(spec.Dot.DialTimeout.AsDuration()),
 			upstream.WithTimeout(spec.Dot.Timeout.AsDuration()),
 			upstream.WithIface(spec.Dot.Iface),
+			upstream.WithConnPool(spec.Dot.ConnPool.GetMaxItems()),
 			upstream.WithTLSConfig(tlsCfg),
 		)
 

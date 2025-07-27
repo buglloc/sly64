@@ -117,6 +117,9 @@ message TcpUpstream {
 
   // Network interface to use
   string iface = 5;
+
+  // Connection pool config
+  ConnPool conn_pool = 6;
 }
 
 message DotUpstream {
@@ -134,6 +137,25 @@ message DotUpstream {
 
   // TLS config
   TLS tls = 5;
+
+  // Connection pool config
+  ConnPool conn_pool = 6;
+}
+
+message TLS {
+  // Path to the CA certificate file
+  string ca_cert= 1;
+
+  // Server name for TLS verification
+  string server_name = 2;
+
+  // Controls whether a client verifies the server's certificate chain and host name.
+  bool insecure_skip_verify = 3;
+}
+
+message ConnPool {
+  // Maximum items in pool, <= 1 mean no pool
+  int32 max_items = 1;
 }
 
 message Source {
@@ -154,15 +176,4 @@ message FileSource {
 
   // Reload interval (based on mtime and content)
   google.protobuf.Duration reload_interval = 4;
-}
-
-message TLS {
-  // Path to the CA certificate file
-  string ca_cert= 1;
-
-  // Server name for TLS verification
-  string server_name = 2;
-
-  // Controls whether a client verifies the server's certificate chain and host name.
-  bool insecure_skip_verify = 3;
 }
