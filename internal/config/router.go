@@ -100,9 +100,15 @@ func routerPatcher(cfg *configpb.Config, path string) error {
 				continue
 			}
 
-			if !filepath.IsAbs(fileSource.File.Path) {
-				fileSource.File.Path = filepath.Join(curDir, fileSource.File.Path)
+			if len(fileSource.File.Path) == 0 {
+				continue
 			}
+
+			if filepath.IsAbs(fileSource.File.Path) {
+				continue
+			}
+
+			fileSource.File.Path = filepath.Join(curDir, fileSource.File.Path)
 		}
 	}
 

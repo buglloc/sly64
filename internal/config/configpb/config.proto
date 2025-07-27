@@ -123,17 +123,17 @@ message DotUpstream {
   // Address, e.g., "1.1.1.1:853" or "1.1.1.1"
   string addr = 1;
 
-  // Server name for TLS verification, e.g., "one.one.one.one"
-  string server_name = 2;
-
   // Dial timeout
-  google.protobuf.Duration dial_timeout = 3;
+  google.protobuf.Duration dial_timeout = 2;
 
   // Query timeout
-  google.protobuf.Duration timeout = 4;
+  google.protobuf.Duration timeout = 3;
 
   // Network interface to use
-  string iface = 5;
+  string iface = 4;
+
+  // TLS config
+  TLS tls = 5;
 }
 
 message Source {
@@ -154,4 +154,15 @@ message FileSource {
 
   // Reload interval (based on mtime and content)
   google.protobuf.Duration reload_interval = 4;
+}
+
+message TLS {
+  // Path to the CA certificate file
+  string ca_cert= 1;
+
+  // Server name for TLS verification
+  string server_name = 2;
+
+  // Controls whether a client verifies the server's certificate chain and host name.
+  bool insecure_skip_verify = 3;
 }

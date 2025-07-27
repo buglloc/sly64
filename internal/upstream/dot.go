@@ -3,7 +3,6 @@ package upstream
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -14,11 +13,10 @@ import (
 )
 
 const (
-	DefaultDoTNetwork    = "tcp-tls"
-	DefaultDoTAddr       = "1.1.1.1:853"
-	DefaultDotServerName = "one.one.one.one"
-	DefaultDoTTimeout    = 2 * time.Second
-	DefaultDoTPort       = 853
+	DefaultDoTNetwork = "tcp-tls"
+	DefaultDoTAddr    = "1.1.1.1:853"
+	DefaultDoTTimeout = 2 * time.Second
+	DefaultDoTPort    = 853
 )
 
 var _ Upstream = (*DoT)(nil)
@@ -30,6 +28,10 @@ type dotAddr struct {
 }
 
 func (a dotAddr) String() string {
+	if len(a.serverName) == 0 {
+		return fmt.Sprintf("%s://%s", a.net, a.addr)
+	}
+
 	return fmt.Sprintf("%s://%s [%s]", a.net, a.addr, a.serverName)
 }
 
@@ -43,15 +45,13 @@ type DoT struct {
 func NewDoT(opts ...Option) (*DoT, error) {
 	d := &DoT{
 		addr: dotAddr{
-			net:        DefaultDoTNetwork,
-			addr:       DefaultDoTAddr,
-			serverName: DefaultDotServerName,
+			net:  DefaultDoTNetwork,
+			addr: DefaultDoTAddr,
 		},
 		timeout: DefaultPlainTimeout,
 		tlsConfig: &tls.Config{
 			RootCAs:            certifi.NewCertPool(),
 			ClientSessionCache: tls.NewLRUClientSessionCache(0),
-			MinVersion:         tls.VersionTLS12,
 		},
 	}
 
@@ -63,16 +63,19 @@ func NewDoT(opts ...Option) (*DoT, error) {
 		}
 
 		switch o := opt.(type) {
-		case dotAddrOpt:
-			addr, err := d.parseAddr(o.addr, o.serverName)
+		case addrOpt:
+			addr, err := d.parseAddr(o.addr)
 			if err != nil {
 				return nil, fmt.Errorf("invalid upstream addr %q: %w", o.addr, err)
 			}
 			d.addr = addr
-			d.tlsConfig.ServerName = addr.serverName
 
 		case timeoutOpt:
 			d.timeout = o.timeout
+
+		case tlsCfgOpt:
+			d.tlsConfig = o.cfg
+			d.addr.serverName = o.cfg.ServerName
 
 		case nopOpt:
 			//pass
@@ -110,11 +113,7 @@ func (d *DoT) Close() error {
 	return nil
 }
 
-func (d *DoT) parseAddr(addr, serverName string) (dotAddr, error) {
-	if len(serverName) == 0 {
-		return dotAddr{}, errors.New("servername can't be empty so far")
-	}
-
+func (d *DoT) parseAddr(addr string) (dotAddr, error) {
 	if _, portStr, err := net.SplitHostPort(addr); err == nil {
 		port, err := strconv.Atoi(portStr)
 		if err != nil {
@@ -126,15 +125,13 @@ func (d *DoT) parseAddr(addr, serverName string) (dotAddr, error) {
 		}
 
 		return dotAddr{
-			net:        "tcp-tls",
-			addr:       addr,
-			serverName: serverName,
+			net:  "tcp-tls",
+			addr: addr,
 		}, nil
 	}
 
 	return dotAddr{
-		net:        "tcp-tls",
-		addr:       fmt.Sprintf("%s:%d", addr, DefaultPlainPort),
-		serverName: serverName,
+		net:  "tcp-tls",
+		addr: fmt.Sprintf("%s:%d", addr, DefaultDoTPort),
 	}, nil
 }

@@ -18,6 +18,7 @@ type cfgPatcher func(cfg *configpb.Config, path string) error
 
 var cfgPatchers = []cfgPatcher{
 	routerPatcher,
+	upstreamPatcher,
 }
 
 func NewRuntime(cfgPath string) (*Runtime, error) {

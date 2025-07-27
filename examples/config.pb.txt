@@ -61,10 +61,12 @@ route: {
   upstream: {
     dot: {
       addr: "1.1.1.1:853"             # DNS-over-TLS address
-      server_name: "one.one.one.one"  # Server name for TLS verification
       dial_timeout: { seconds: 1 }
       timeout: { seconds: 2 }
       # iface: "tun0"
+      tls: {
+        server_name: "one.one.one.one"  # Server name for TLS verification
+      }
     }
   }
 
