@@ -12,7 +12,7 @@ import (
 
 var runtime *config.Runtime
 var rootArgs struct {
-	Configs []string
+	CfgPath string
 }
 
 var rootCmd = &cobra.Command{
@@ -29,7 +29,7 @@ func init() {
 	)
 
 	flags := rootCmd.PersistentFlags()
-	flags.StringSliceVar(&rootArgs.Configs, "config", nil, "config file")
+	flags.StringVar(&rootArgs.CfgPath, "config", "", "config file")
 
 	rootCmd.AddCommand(
 		startCmd,
@@ -42,7 +42,7 @@ func Execute() error {
 
 func initRuntime() {
 	var err error
-	runtime, err = config.NewRuntime(rootArgs.Configs...)
+	runtime, err = config.NewRuntime(rootArgs.CfgPath)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "unable to create runtime: %v\n", err)
 		os.Exit(1)

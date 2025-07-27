@@ -102,7 +102,7 @@ func (r *Router) buildTrie() (*RouteTrie, error) {
 
 		for _, domain := range domains {
 			if _, dup := seen[domain]; dup {
-				return nil, fmt.Errorf("dupplicate domain: %s", domain)
+				return nil, fmt.Errorf("dupplicate domain in route %s[%d]: %s", route.Name(), i, domain)
 			}
 			seen[domain] = struct{}{}
 

@@ -15,16 +15,18 @@ func TestRouteTrie(t *testing.T) {
 		router.NewRoute(router.WithRouteName("3")),
 		router.NewRoute(router.WithRouteName("4")),
 		router.NewRoute(router.WithRouteName("5")),
+		router.NewRoute(router.WithRouteName("6")),
 	}
 
 	trie := router.NewRouteTrie()
 	// Both wildcard and non-wildcard syntax work the same way
-	// "*. " prefix is dropped during insertion
+	// "*." prefix is dropped during insertion
 	trie.Insert("foo.example.com", routes[0])     // stored as foo.example.com
 	trie.Insert("*.example.com", routes[1])       // stored as example.com
 	trie.Insert("bar.foo.example.com", routes[2]) // stored as bar.foo.example.com
 	trie.Insert("example.com", routes[3])         // stored as example.com (overwrites routes[1])
 	trie.Insert("wild.com", routes[4])            // stored as wild.com
+	trie.Insert(".", routes[5])                   // stored as .
 
 	tests := []struct {
 		domain string
@@ -36,11 +38,12 @@ func TestRouteTrie(t *testing.T) {
 		{"example.com.", routes[3]},             // exact match
 		{"bar.foo.example.com.", routes[2]},     // exact match
 		{"baz.bar.foo.example.com.", routes[2]}, // matches bar.foo.example.com pattern
-		{"com.", nil},                           // no match
-		{"some.com.", nil},                      // no match
+		{"com.", routes[5]},                     // match global
+		{"some.com.", routes[5]},                // match global
 		{"x.y.wild.com.", routes[4]},            // matches wild.com pattern
 		{"foo.wild.com.", routes[4]},            // matches wild.com pattern
 		{"wild.com.", routes[4]},                // exact match
+		{"wild.com", routes[4]},                 // exact match
 	}
 
 	for _, test := range tests {

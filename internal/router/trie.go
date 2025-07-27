@@ -70,12 +70,17 @@ func findTrieLabel(node *TrieNode, labels []string, idx int) *Route {
 
 func splitDomain(domain string) []string {
 	dLen := len(domain)
-	switch {
-	case dLen == 0:
+	if dLen == 0 {
 		return nil
-	case domain[dLen-1] == '.':
+	}
+
+	if domain[dLen-1] == '.' {
 		// Drop trailing "."
 		dLen--
+	}
+
+	if dLen == 0 {
+		return nil
 	}
 
 	labels := strings.Split(domain[:dLen], ".")
