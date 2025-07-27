@@ -14,7 +14,13 @@ const (
 	ShutdownDeadline = 1 * time.Minute
 )
 
-func NewRuntime(configs ...string) (*Runtime, error) {
+type cfgPatcher func(cfg *configpb.Config, path string) error
+
+var cfgPatchers = []cfgPatcher{
+	routerPatcher,
+}
+
+func NewRuntime(cfgPath string) (*Runtime, error) {
 	cfg := &configpb.Config{
 		LogLevel: configpb.LogLevel_LOG_LEVEL_INFO,
 		Listener: []*configpb.Listener{
@@ -61,25 +67,13 @@ func NewRuntime(configs ...string) (*Runtime, error) {
 		},
 	}
 
-	if err := loadConfigs(cfg, configs...); err != nil {
-		return nil, err
+	if len(cfgPath) > 0 {
+		if err := loadConfig(cfg, cfgPath); err != nil {
+			return nil, fmt.Errorf("load config %q: %w", cfgPath, err)
+		}
 	}
 
 	return newRuntime(cfg)
-}
-
-func loadConfigs(cfg *configpb.Config, paths ...string) error {
-	for _, p := range paths {
-		if p == "" {
-			continue
-		}
-
-		if err := loadConfig(cfg, p); err != nil {
-			return fmt.Errorf("load config %q: %w", p, err)
-		}
-	}
-
-	return nil
 }
 
 func loadConfig(cfg *configpb.Config, path string) error {
@@ -88,5 +82,15 @@ func loadConfig(cfg *configpb.Config, path string) error {
 		return fmt.Errorf("read config: %w", err)
 	}
 
-	return prototext.Unmarshal(data, cfg)
+	if err := prototext.Unmarshal(data, cfg); err != nil {
+		return fmt.Errorf("parse config: %w", err)
+	}
+
+	for _, p := range cfgPatchers {
+		if err := p(cfg, path); err != nil {
+			return fmt.Errorf("patch config: %w", err)
+		}
+	}
+
+	return nil
 }

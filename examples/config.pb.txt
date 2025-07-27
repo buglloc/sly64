@@ -77,11 +77,12 @@ route: {
     }
   }
 
-#  source: {
-#    file: {
-#      path: "/tmp/sly64_domains.txt"     # File containing domain list
-#      reload_interval: { seconds: 60 }   # How often to check for changes
-#    }
-#  }
+  source: {
+    file: {
+      # Path is relative to current config if not absolute
+      path: "domains.txt"                # File containing domain list
+      reload_interval: { seconds: 60 }   # How often to check for changes
+    }
+  }
 
 }
