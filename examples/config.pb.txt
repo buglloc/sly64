@@ -70,6 +70,8 @@ route: {
 
   source: {
     static: {
+      # all listed domains behave as wildcards (i.e. match subdomains)
+      domain: "2ip.ru."
       domain: "wtfismyip.com"
       domain: "*.example.com"
     }
