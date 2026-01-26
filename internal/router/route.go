@@ -17,13 +17,14 @@ const maxCNAMEDepth = 10
 
 type RouteSubscribeFn func(routeName string)
 type Route struct {
-	name      string
-	upstreams []upstream.Upstream
-	sources   []Source
-	breakers  []*gobreaker.CircuitBreaker[*dns.Msg]
-	finalize  bool
-	dns64     *dns64.DNS64
-	cache     Cache
+	name         string
+	upstreams    []upstream.Upstream
+	sources      []Source
+	breakers     []*gobreaker.CircuitBreaker[*dns.Msg]
+	bannedQTypes map[uint16]struct{}
+	finalize     bool
+	dns64        *dns64.DNS64
+	cache        Cache
 }
 
 func NewRoute(opts ...RouteOption) *Route {
@@ -85,6 +86,18 @@ func (r *Route) Close() error {
 }
 
 func (r *Route) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
+	if len(req.Question) != 1 {
+		return nil, fmt.Errorf("unexpected questions: expected=1 got=%d", len(req.Question))
+	}
+
+	if _, banned := r.bannedQTypes[req.Question[0].Qtype]; banned {
+		return &dns.Msg{
+			MsgHdr: dns.MsgHdr{
+				Rcode: dns.RcodeSuccess,
+			},
+		}, nil
+	}
+
 	if r.dns64 != nil {
 		return r.exchangeDNS64(ctx, req)
 	}
@@ -93,10 +106,6 @@ func (r *Route) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 }
 
 func (r *Route) exchangeDNS64(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
-	if len(req.Question) != 1 {
-		return nil, fmt.Errorf("unexpected questions: expected=1 got=%d", len(req.Question))
-	}
-
 	switch req.Question[0].Qtype {
 	case dns.TypeSRV, dns.TypeANY, dns.TypeHTTPS, dns.TypeCNAME, dns.TypeA:
 		return &dns.Msg{
@@ -153,10 +162,6 @@ func (r *Route) exchangeDNS64(ctx context.Context, req *dns.Msg) (*dns.Msg, erro
 }
 
 func (r *Route) exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
-	if len(req.Question) != 1 {
-		return nil, fmt.Errorf("unexpected questions: expected=1 got=%d", len(req.Question))
-	}
-
 	if !r.finalize {
 		return r.doExchange(ctx, req)
 	}

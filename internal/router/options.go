@@ -74,3 +74,16 @@ func WithFileSourceReloadInterval(interval time.Duration) FileSourceOption {
 		s.reloadInterval = interval
 	}
 }
+
+func WithBannedQTypes(types ...uint16) RouteOption {
+	return func(r *Route) {
+		if len(types) == 0 {
+			return
+		}
+
+		r.bannedQTypes = make(map[uint16]struct{}, len(types))
+		for _, typ := range types {
+			r.bannedQTypes[typ] = struct{}{}
+		}
+	}
+}

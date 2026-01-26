@@ -58,6 +58,11 @@ func NewRoute(cfg *configpb.Route) (*router.Route, error) {
 		}
 	}
 
+	bannedQTypes := make([]uint16, len(cfg.BannedQtypes))
+	for i, t := range cfg.BannedQtypes {
+		bannedQTypes[i] = uint16(t)
+	}
+
 	var cacheCfg router.CacheCfg
 	if cfg.Cache != nil {
 		cacheCfg = router.CacheCfg{
@@ -74,6 +79,7 @@ func NewRoute(cfg *configpb.Route) (*router.Route, error) {
 		router.WithRouteUpstreams(upstreams...),
 		router.WithRouteDNS64(d64),
 		router.WithRouteCache(cacheCfg),
+		router.WithBannedQTypes(bannedQTypes...),
 	), nil
 }
 
