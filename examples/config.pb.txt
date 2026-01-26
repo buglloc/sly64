@@ -32,9 +32,6 @@ route: {
       timeout: { seconds: 2 }
     }
   }
-
-  banned_qtypes: DNS_TYPE_HTTPS;
-  banned_qtypes: DNS_TYPE_AAAA;
 }
 
 route: {
