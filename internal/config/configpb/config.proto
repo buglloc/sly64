@@ -6,6 +6,8 @@ option go_package = "github.com/buglloc/sly64/v2/internal/config/configpb";
 
 import "google/protobuf/duration.proto";
 
+import "dns.proto";
+
 message Config {
   LogLevel log_level = 1;
   uint32 max_requests = 2;
@@ -62,6 +64,9 @@ message Route {
 
   // Routing sources used for this route
   repeated Source source = 6;
+
+  // Banned query types (HTTPS for example)
+  repeated DnsType banned_qtypes = 7;
 }
 
 message Dns64 {
