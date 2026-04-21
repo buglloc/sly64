@@ -7,7 +7,7 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2
 	github.com/karlseguin/ccache/v3 v3.0.8
 	github.com/miekg/dns v1.1.72
-	github.com/rs/zerolog v1.34.0
+	github.com/rs/zerolog v1.35.1
 	github.com/sony/gobreaker/v2 v2.4.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.10.0
