@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"time"
 
 	"github.com/miekg/dns"
 	"github.com/rs/zerolog/log"
@@ -11,6 +13,10 @@ import (
 
 	"github.com/buglloc/sly64/v2/internal/router"
 	"github.com/buglloc/sly64/v2/internal/syncutil"
+)
+
+const (
+	listenerShutdownTimeout = 5 * time.Second
 )
 
 var _ dns.Handler = (*Server)(nil)
@@ -53,21 +59,33 @@ func (s *Server) Start() error {
 
 	g, ctx := errgroup.WithContext(s.ctx)
 	for _, srv := range s.servers {
+		srv := srv
 		g.Go(func() error {
 			err := srv.ListenAndServe()
-			if err != nil {
-				log.Error().Err(err).Msg("listen failed")
-				return fmt.Errorf("start server: %w", err)
+			if err == nil || errors.Is(err, context.Canceled) {
+				return nil
 			}
 
-			return nil
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+			}
+
+			log.Error().Err(err).Msg("listen failed")
+			return fmt.Errorf("start server: %w", err)
 		})
 	}
 
 	g.Go(func() error {
-		select {
-		case <-s.ctx.Done():
-		case <-ctx.Done():
+		<-ctx.Done()
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), listenerShutdownTimeout)
+		defer cancel()
+		for _, srv := range s.servers {
+			if err := srv.ShutdownContext(shutdownCtx); err != nil {
+				log.Error().Err(err).Msg("listener shutdown failed")
+			}
 		}
 
 		return nil
@@ -80,9 +98,10 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	rsp := new(dns.Msg)
 	rsp.SetReply(req)
 
-	if err := s.sema.Acquire(s.ctx); err != nil {
-		log.Error().Err(err).Msg("acquiring semaphore")
+	if !s.sema.TryAcquire() {
+		log.Warn().Msg("too many concurrent requests")
 		rsp.SetRcode(req, dns.RcodeServerFailure)
+		_ = w.WriteMsg(rsp)
 		return
 	}
 	defer s.sema.Release()
@@ -92,17 +111,31 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
+	defer func() {
+		s.servers = s.servers[:0]
+	}()
+
+	s.shutdownFn()
+
+	var errs []error
 	for _, srv := range s.servers {
-		srv.ShutdownContext(ctx)
+		if err := srv.ShutdownContext(ctx); err != nil {
+			errs = append(errs, fmt.Errorf("shutdown listener: %w", err))
+		}
 	}
 	s.servers = s.servers[:0]
 
-	s.shutdownFn()
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-s.closed:
-		return nil
+		if s.router != nil {
+			if err := s.router.Close(); err != nil {
+				errs = append(errs, fmt.Errorf("close router: %w", err))
+			}
+		}
+
+		return errors.Join(errs...)
 	}
 }
 
@@ -126,8 +159,16 @@ func (s *Server) buildReply(req *dns.Msg, rsp *dns.Msg) {
 		return
 	}
 
-	rsp.SetRcode(req, rrsp.Rcode)
+	rsp.MsgHdr = rrsp.MsgHdr
+	rsp.Id = req.Id
+	rsp.Response = true
+	rsp.Opcode = req.Opcode
+	rsp.RecursionDesired = req.RecursionDesired
+	rsp.CheckingDisabled = req.CheckingDisabled
+	rsp.Question = slices.Clone(req.Question)
 	rsp.Answer = rrsp.Answer
+	rsp.Ns = rrsp.Ns
+	rsp.Extra = rrsp.Extra
 }
 
 func (s *Server) validateRequest(req *dns.Msg, rsp *dns.Msg) error {

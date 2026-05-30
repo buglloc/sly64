@@ -2,6 +2,7 @@ package router
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/karlseguin/ccache/v3"
@@ -28,7 +29,7 @@ func NewCache(cfg CacheCfg) Cache {
 	return &memCache{
 		cfg: cfg,
 		cache: ccache.New(
-			ccache.Configure[*dns.Msg]().
+			ccache.Configure[*cacheEntry]().
 				MaxSize(int64(cfg.Size)),
 		),
 	}
@@ -43,7 +44,12 @@ func (c *nopCache) Fetch(_ *dns.Msg, fetch cacheFetcher) (*dns.Msg, error) {
 
 type memCache struct {
 	cfg   CacheCfg
-	cache *ccache.Cache[*dns.Msg]
+	cache *ccache.Cache[*cacheEntry]
+}
+
+type cacheEntry struct {
+	msg     *dns.Msg
+	created time.Time
 }
 
 func (c *memCache) Fetch(req *dns.Msg, fetch cacheFetcher) (*dns.Msg, error) {
@@ -54,7 +60,7 @@ func (c *memCache) Fetch(req *dns.Msg, fetch cacheFetcher) (*dns.Msg, error) {
 
 	item := c.cache.Get(key)
 	if item != nil && !item.Expired() {
-		return item.Value().Copy(), nil
+		return c.withAgedTTL(item), nil
 	}
 
 	rr, err := fetch()
@@ -66,7 +72,10 @@ func (c *memCache) Fetch(req *dns.Msg, fetch cacheFetcher) (*dns.Msg, error) {
 		return rr, nil
 	}
 
-	c.cache.Set(key, rr.Copy(), c.ttl(rr))
+	c.cache.Set(key, &cacheEntry{
+		msg:     rr.Copy(),
+		created: time.Now(),
+	}, c.ttl(rr))
 	return rr, nil
 }
 
@@ -75,7 +84,8 @@ func (c *memCache) reqKey(req *dns.Msg) string {
 		return ""
 	}
 
-	return fmt.Sprintf("%d:%s", req.Question[0].Qtype, req.Question[0].Name)
+	q := req.Question[0]
+	return fmt.Sprintf("%d:%d:%s", q.Qclass, q.Qtype, normalizeDomain(q.Name))
 }
 
 func (c *memCache) ttl(msg *dns.Msg) time.Duration {
@@ -92,4 +102,33 @@ func (c *memCache) ttl(msg *dns.Msg) time.Duration {
 	}
 
 	return time.Duration(ttl) * time.Second
+}
+
+func (c *memCache) withAgedTTL(item *ccache.Item[*cacheEntry]) *dns.Msg {
+	entry := item.Value()
+	msg := entry.msg.Copy()
+	ageSeconds := uint32(math.Ceil(time.Since(entry.created).Seconds()))
+	ageRRsTTL(msg.Answer, ageSeconds)
+	ageRRsTTL(msg.Ns, ageSeconds)
+	ageRRsTTL(msg.Extra, ageSeconds)
+
+	return msg
+}
+
+func ageRRsTTL(rrs []dns.RR, age uint32) {
+	for _, rr := range rrs {
+		if rr.Header().Rrtype == dns.TypeOPT {
+			continue
+		}
+
+		rr.Header().Ttl = ageTTL(rr.Header().Ttl, age)
+	}
+}
+
+func ageTTL(ttl uint32, age uint32) uint32 {
+	if ttl <= age {
+		return 0
+	}
+
+	return ttl - age
 }

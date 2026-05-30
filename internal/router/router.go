@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/miekg/dns"
@@ -17,8 +17,7 @@ const (
 
 type Router struct {
 	routes []*Route
-	mu     sync.Mutex
-	trie   *RouteTrie
+	trie   atomic.Pointer[RouteTrie]
 }
 
 func NewRouter(routes ...*Route) (*Router, error) {
@@ -31,7 +30,7 @@ func NewRouter(routes ...*Route) (*Router, error) {
 		return nil, fmt.Errorf("build route trie: %w", err)
 	}
 
-	r.trie = trie
+	r.trie.Store(trie)
 	r.subscribe()
 	return r, nil
 }
@@ -41,9 +40,11 @@ func (r *Router) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 		return nil, fmt.Errorf("unexpected questions: expected=1 got=%d", len(req.Question))
 	}
 
-	r.mu.Lock()
-	route := r.trie.Find(req.Question[0].Name)
-	r.mu.Unlock()
+	trie := r.trie.Load()
+	if trie == nil {
+		return nil, errors.New("route trie is not initialized")
+	}
+	route := trie.Find(req.Question[0].Name)
 
 	if route == nil {
 		log.Ctx(ctx).Warn().Msgf("no route for name: %s", req.Question[0].Name)
@@ -83,9 +84,7 @@ func (r *Router) onRouteChange(route string) {
 		return
 	}
 
-	r.mu.Lock()
-	r.trie = trie
-	r.mu.Unlock()
+	r.trie.Store(trie)
 }
 
 func (r *Router) buildTrie() (*RouteTrie, error) {
@@ -101,12 +100,13 @@ func (r *Router) buildTrie() (*RouteTrie, error) {
 		}
 
 		for _, domain := range domains {
-			if _, dup := seen[domain]; dup {
+			normDomain := normalizeDomain(domain)
+			if _, dup := seen[normDomain]; dup {
 				return nil, fmt.Errorf("dupplicate domain in route %s[%d]: %s", route.Name(), i, domain)
 			}
-			seen[domain] = struct{}{}
+			seen[normDomain] = struct{}{}
 
-			trie.Insert(domain, route)
+			trie.Insert(normDomain, route)
 		}
 	}
 

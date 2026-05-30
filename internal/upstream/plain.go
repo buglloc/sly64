@@ -70,6 +70,9 @@ func NewPlain(opts ...Option) (*Plain, error) {
 		case poolOpt:
 			poolSize = o.maxItems
 
+		case tcpFallbackOpt:
+			p.canFallback = o.enabled
+
 		case nopOpt:
 			//pass
 
@@ -140,20 +143,19 @@ func (p *Plain) exchangeWithPool(ctx context.Context, req *dns.Msg) (*dns.Msg, e
 
 func (p *Plain) exchangeUDP(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 	rsp, err := p.exchange(ctx, req, p.addr.net, p.addr.addr)
-	if err == nil {
+	if err == nil && !rsp.Truncated {
 		return rsp, nil
 	}
 
-	switch p.addr.net {
-	case NetUDP, NetUDP4, NetUDP6:
+	if err == nil && !p.canFallback {
+		return rsp, nil
+	}
+
+	if !p.canFallback {
 		return nil, err
 	}
 
-	switch {
-	case !p.canFallback:
-		return nil, err
-
-	case errors.Is(err, ErrMalformedRsp):
+	if errors.Is(err, ErrMalformedRsp) {
 		log.Ctx(ctx).
 			Info().
 			Str("source", "upstream_plain").
@@ -162,20 +164,19 @@ func (p *Plain) exchangeUDP(ctx context.Context, req *dns.Msg) (*dns.Msg, error)
 			Msg("plain response is malformed, using tcp")
 
 		return p.exchange(ctx, req, switchNetwork(p.addr.net), p.addr.addr)
+	}
 
-	case rsp != nil && rsp.Truncated:
+	if rsp != nil && rsp.Truncated {
 		log.Ctx(ctx).
 			Info().
 			Str("source", "upstream_plain").
 			Stringer("addr", p.addr).
-			Err(err).
 			Msg("plain response is truncated, using tcp")
 
 		return p.exchange(ctx, req, switchNetwork(p.addr.net), p.addr.addr)
-
-	default:
-		return nil, err
 	}
+
+	return nil, err
 }
 
 func (p *Plain) exchange(ctx context.Context, req *dns.Msg, network string, addr string) (*dns.Msg, error) {
@@ -229,6 +230,6 @@ func (p *Plain) parseAddr(addr string, network string) (plainAddr, error) {
 
 	return plainAddr{
 		net:  network,
-		addr: fmt.Sprintf("%s:%d", addr, DefaultPlainPort),
+		addr: net.JoinHostPort(addr, strconv.Itoa(DefaultPlainPort)),
 	}, nil
 }

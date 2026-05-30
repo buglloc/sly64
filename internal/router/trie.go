@@ -21,8 +21,7 @@ func NewRouteTrie() *RouteTrie {
 }
 
 func (t *RouteTrie) Insert(domain string, route *Route) {
-	// Drop "*. " prefix if present to normalize wildcard patterns
-	domain = strings.TrimPrefix(domain, "*.")
+	domain = normalizeDomain(domain)
 
 	labels := splitDomain(domain)
 	node := t.root
@@ -69,6 +68,7 @@ func findTrieLabel(node *TrieNode, labels []string, idx int) *Route {
 }
 
 func splitDomain(domain string) []string {
+	domain = normalizeDomain(domain)
 	dLen := len(domain)
 	if dLen == 0 {
 		return nil
@@ -89,4 +89,11 @@ func splitDomain(domain string) []string {
 	}
 
 	return labels
+}
+
+func normalizeDomain(domain string) string {
+	domain = strings.ToLower(strings.TrimSpace(domain))
+	domain = strings.TrimPrefix(domain, "*.")
+	domain = strings.TrimSuffix(domain, ".")
+	return domain
 }

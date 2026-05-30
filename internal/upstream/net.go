@@ -25,7 +25,9 @@ const (
 )
 
 func NewDialer(opts ...DialOption) *net.Dialer {
-	d := &net.Dialer{}
+	d := &net.Dialer{
+		Timeout: DefaultDialTimeout,
+	}
 
 	for _, opt := range opts {
 		switch o := opt.(type) {
