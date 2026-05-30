@@ -95,7 +95,18 @@ func NewDoT(opts ...Option) (*DoT, error) {
 
 	d.dialer = NewDialer(dialOpts...)
 	dialerFn := func(ctx context.Context) (net.Conn, error) {
-		return tls.DialWithDialer(d.dialer, "tcp", d.addr.addr, d.tlsConfig)
+		tcpConn, err := d.dialer.DialContext(ctx, "tcp", d.addr.addr)
+		if err != nil {
+			return nil, err
+		}
+
+		conn := tls.Client(tcpConn, d.tlsConfig)
+		if err := conn.HandshakeContext(ctx); err != nil {
+			_ = tcpConn.Close()
+			return nil, err
+		}
+
+		return conn, nil
 	}
 
 	if poolSize > 0 {
@@ -166,6 +177,6 @@ func (d *DoT) parseAddr(addr string) (dotAddr, error) {
 
 	return dotAddr{
 		net:  "tcp-tls",
-		addr: fmt.Sprintf("%s:%d", addr, DefaultDoTPort),
+		addr: net.JoinHostPort(addr, strconv.Itoa(DefaultDoTPort)),
 	}, nil
 }

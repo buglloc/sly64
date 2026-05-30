@@ -15,6 +15,7 @@ func NewUpstream(cfg *configpb.Upstream) (upstream.Upstream, error) {
 			upstream.WithDialTimeout(spec.Udp.DialTimeout.AsDuration()),
 			upstream.WithTimeout(spec.Udp.Timeout.AsDuration()),
 			upstream.WithIface(spec.Udp.Iface),
+			upstream.WithTCPFallback(!spec.Udp.NoTcpFallback),
 		)
 
 	case *configpb.Upstream_Tcp:

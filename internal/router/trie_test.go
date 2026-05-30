@@ -44,6 +44,7 @@ func TestRouteTrie(t *testing.T) {
 		{"foo.wild.com.", routes[4]},            // matches wild.com pattern
 		{"wild.com.", routes[4]},                // exact match
 		{"wild.com", routes[4]},                 // exact match
+		{"Foo.Example.COM.", routes[0]},         // DNS names are case-insensitive
 	}
 
 	for _, test := range tests {
@@ -58,4 +59,25 @@ func TestRouteTrie(t *testing.T) {
 			require.Equal(t, test.expect, got, "expected=%s got=%s", test.expect.Name(), got.Name())
 		})
 	}
+}
+
+func TestRouterDuplicateDomainsAfterNormalization(t *testing.T) {
+	_, err := router.NewRouter(
+		router.NewRoute(
+			router.WithRouteName("1"),
+			router.WithRouteSource(mustStaticSource(t, []string{"*.Example.COM."})),
+		),
+		router.NewRoute(
+			router.WithRouteName("2"),
+			router.WithRouteSource(mustStaticSource(t, []string{"example.com"})),
+		),
+	)
+	require.Error(t, err)
+}
+
+func mustStaticSource(t *testing.T, domains []string) router.Source {
+	t.Helper()
+	s, err := router.NewStaticSource(domains)
+	require.NoError(t, err)
+	return s
 }

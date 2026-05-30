@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/miekg/dns"
 	"github.com/rs/zerolog/log"
@@ -79,6 +80,12 @@ func (r *Route) Close() error {
 	for _, u := range r.upstreams {
 		if err := u.Close(); err != nil {
 			errs = append(errs, fmt.Errorf("close upstream %s: %w", u.Address(), err))
+		}
+	}
+
+	for i, s := range r.sources {
+		if err := s.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("close source [%d]: %w", i, err))
 		}
 	}
 
@@ -287,7 +294,7 @@ func parseAnswersFromRR(qname string, qtype uint16, qclass uint16, rrs []dns.RR)
 			continue
 		}
 
-		if header.Name != qname {
+		if !strings.EqualFold(header.Name, qname) {
 			continue
 		}
 

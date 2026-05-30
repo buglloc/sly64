@@ -4,6 +4,7 @@ import "context"
 
 type Semaphore interface {
 	Acquire(ctx context.Context) (err error)
+	TryAcquire() bool
 	Release()
 }
 
@@ -13,6 +14,10 @@ type NopSemaphore struct{}
 
 func (NopSemaphore) Acquire(_ context.Context) error {
 	return nil
+}
+
+func (NopSemaphore) TryAcquire() bool {
+	return true
 }
 
 func (NopSemaphore) Release() {}
@@ -35,6 +40,15 @@ func (c *LeakySemaphore) Acquire(ctx context.Context) (err error) {
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
+	}
+}
+
+func (c *LeakySemaphore) TryAcquire() bool {
+	select {
+	case c.c <- struct{}{}:
+		return true
+	default:
+		return false
 	}
 }
 

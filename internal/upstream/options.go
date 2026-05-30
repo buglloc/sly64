@@ -118,10 +118,21 @@ type poolOpt struct {
 
 func WithConnPool(maxItems int32) Option {
 	if maxItems <= 1 {
-		maxItems = DefaultPoolSize
+		return nopOpt{}
 	}
 
 	return poolOpt{
 		maxItems: maxItems,
+	}
+}
+
+type tcpFallbackOpt struct {
+	Option
+	enabled bool
+}
+
+func WithTCPFallback(enabled bool) Option {
+	return tcpFallbackOpt{
+		enabled: enabled,
 	}
 }

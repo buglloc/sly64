@@ -106,8 +106,13 @@ func (s *FileSource) loop() {
 	}
 
 	ticker := time.NewTicker(s.reloadInterval)
+	defer ticker.Stop()
 	for {
-		<-ticker.C
+		select {
+		case <-s.ctx.Done():
+			return
+		case <-ticker.C:
+		}
 
 		notify, err := s.sync()
 		if err != nil {
@@ -120,8 +125,10 @@ func (s *FileSource) loop() {
 		}
 
 		log.Info().Str("filepath", s.filepath).Msg("source file changed: notify")
-		// TODO(buglloc): racy
-		for _, w := range s.watchers {
+		s.mu.Lock()
+		watchers := append([]WatchNotifier(nil), s.watchers...)
+		s.mu.Unlock()
+		for _, w := range watchers {
 			w()
 		}
 	}
