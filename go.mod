@@ -1,6 +1,6 @@
 module github.com/buglloc/sly64/v2
 
-go 1.25.5
+go 1.26
 
 require (
 	github.com/buglloc/certifi v0.9.5
