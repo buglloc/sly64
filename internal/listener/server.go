@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"slices"
 	"time"
 
@@ -101,13 +102,51 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	if !s.sema.TryAcquire() {
 		log.Warn().Msg("too many concurrent requests")
 		rsp.SetRcode(req, dns.RcodeServerFailure)
-		_ = w.WriteMsg(rsp)
+		s.writeMsg(w, req, rsp)
 		return
 	}
 	defer s.sema.Release()
 
 	s.buildReply(req, rsp)
+	s.writeMsg(w, req, rsp)
+}
+
+func (s *Server) writeMsg(w dns.ResponseWriter, req, rsp *dns.Msg) {
+	rsp.Extra = stripOPT(rsp.Extra)
+
+	udpSize := dns.MinMsgSize
+	if reqOpt := req.IsEdns0(); reqOpt != nil {
+		if sz := int(reqOpt.UDPSize()); sz > udpSize {
+			udpSize = sz
+		}
+
+		rspOpt := &dns.OPT{
+			Hdr: dns.RR_Header{
+				Name:   ".",
+				Rrtype: dns.TypeOPT,
+			},
+		}
+		rspOpt.SetUDPSize(uint16(udpSize))
+		rspOpt.SetDo(reqOpt.Do())
+		rsp.Extra = append(rsp.Extra, rspOpt)
+	}
+
+	if _, isUDP := w.RemoteAddr().(*net.UDPAddr); isUDP {
+		rsp.Truncate(udpSize)
+	}
+
 	_ = w.WriteMsg(rsp)
+}
+
+func stripOPT(extra []dns.RR) []dns.RR {
+	out := extra[:0]
+
+	for _, rr := range extra {
+		if rr.Header().Rrtype != dns.TypeOPT {
+			out = append(out, rr)
+		}
+	}
+	return out
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
