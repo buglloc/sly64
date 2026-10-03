@@ -11,3 +11,7 @@ go build ./cmd/sly64
 go test -race ./...
 go vet ./...
 ```
+
+## Dependencies
+
+Go dependencies are updated as of 2026-10-03, including `github.com/buglloc/certifi` v0.9.7. Exact versions are recorded in `go.mod` and verified through `go.sum`.
