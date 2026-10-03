@@ -1,6 +1,6 @@
 ARG BASE=gcr.io/distroless/static-debian12:nonroot
 
-FROM golang:1.26.3 AS build
+FROM docker.io/library/golang:1.27.0 AS build
 
 SHELL [ "/bin/sh", "-ec" ]
 WORKDIR /go/src/app

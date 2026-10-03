@@ -147,8 +147,7 @@ func isConnAlive(conn net.Conn) bool {
 	var buf [1]byte
 	_, err := conn.Read(buf[:0])
 	if err != nil {
-		var netErr net.Error
-		if errors.As(err, &netErr) && netErr.Timeout() {
+		if netErr, ok := errors.AsType[net.Error](err); ok && netErr.Timeout() {
 			// Timeout is expected and means connection is likely alive
 			return true
 		}

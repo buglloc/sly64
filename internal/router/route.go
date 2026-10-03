@@ -103,9 +103,7 @@ func (r *Route) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 
 	if _, banned := r.bannedQTypes[req.Question[0].Qtype]; banned {
 		return &dns.Msg{
-			MsgHdr: dns.MsgHdr{
-				Rcode: dns.RcodeSuccess,
-			},
+			Rcode: dns.RcodeSuccess,
 		}, nil
 	}
 
@@ -120,9 +118,7 @@ func (r *Route) exchangeDNS64(ctx context.Context, req *dns.Msg) (*dns.Msg, erro
 	switch req.Question[0].Qtype {
 	case dns.TypeSRV, dns.TypeANY, dns.TypeHTTPS, dns.TypeCNAME, dns.TypeA:
 		return &dns.Msg{
-			MsgHdr: dns.MsgHdr{
-				Rcode: dns.RcodeSuccess,
-			},
+			Rcode: dns.RcodeSuccess,
 		}, nil
 
 	case dns.TypeAAAA:
@@ -185,9 +181,7 @@ func (r *Route) exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 	switch qtype {
 	case dns.TypeCNAME:
 		return &dns.Msg{
-			MsgHdr: dns.MsgHdr{
-				Rcode: dns.RcodeSuccess,
-			},
+			Rcode: dns.RcodeSuccess,
 		}, nil
 
 	case dns.TypeA, dns.TypeAAAA:
@@ -198,10 +192,8 @@ func (r *Route) exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 	}
 
 	subReq := &dns.Msg{
-		MsgHdr: dns.MsgHdr{
-			RecursionDesired: true,
-			Opcode:           dns.OpcodeQuery,
-		},
+		RecursionDesired: true,
+		Opcode:           dns.OpcodeQuery,
 		Question: []dns.Question{{
 			Qtype:  qtype,
 			Qclass: dns.ClassINET,
@@ -210,7 +202,7 @@ func (r *Route) exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 
 	currentName := req.Question[0].Name
 
-	for depth := 0; depth < maxCNAMEDepth; depth++ {
+	for range maxCNAMEDepth {
 		subReq.Question[0].Name = currentName
 
 		rsp, err := r.doExchange(ctx, subReq)

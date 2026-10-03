@@ -52,9 +52,7 @@ func (r *Router) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 		log.Ctx(ctx).Warn().Msgf("no route for name: %s", req.Question[0].Name)
 
 		return &dns.Msg{
-			MsgHdr: dns.MsgHdr{
-				Rcode: dns.RcodeSuccess,
-			},
+			Rcode: dns.RcodeSuccess,
 		}, nil
 	}
 
