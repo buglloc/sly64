@@ -56,7 +56,6 @@ func newBindToDeviceControl(dev string) func(ctx context.Context, network, addre
 		err := c.Control(func(fd uintptr) {
 			cerr = syscall.BindToDevice(int(fd), dev)
 		})
-
 		if err != nil {
 			return fmt.Errorf("socket Control: %w", err)
 		}

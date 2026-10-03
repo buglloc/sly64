@@ -32,6 +32,7 @@ func NewRouter(routes ...*Route) (*Router, error) {
 
 	r.trie.Store(trie)
 	r.subscribe()
+
 	return r, nil
 }
 
@@ -44,10 +45,12 @@ func (r *Router) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 	if trie == nil {
 		return nil, errors.New("route trie is not initialized")
 	}
+
 	route := trie.Find(req.Question[0].Name)
 
 	if route == nil {
 		log.Ctx(ctx).Warn().Msgf("no route for name: %s", req.Question[0].Name)
+
 		return &dns.Msg{
 			MsgHdr: dns.MsgHdr{
 				Rcode: dns.RcodeSuccess,
@@ -60,6 +63,7 @@ func (r *Router) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 
 func (r *Router) Close() error {
 	var errs []error
+
 	for _, route := range r.routes {
 		if err := route.Close(); err != nil {
 			errs = append(errs, fmt.Errorf("close route %s: %w", route.Name(), err))
@@ -81,6 +85,7 @@ func (r *Router) onRouteChange(route string) {
 	trie, err := r.buildTrie()
 	if err != nil {
 		log.Error().Err(err).Msg("failed to build new trie")
+
 		return
 	}
 
@@ -89,10 +94,12 @@ func (r *Router) onRouteChange(route string) {
 
 func (r *Router) buildTrie() (*RouteTrie, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), buildTrieTimeout)
+
 	defer cancel()
 
 	seen := make(map[string]struct{})
 	trie := NewRouteTrie()
+
 	for i, route := range r.routes {
 		domains, err := route.Domains(ctx)
 		if err != nil {
@@ -104,6 +111,7 @@ func (r *Router) buildTrie() (*RouteTrie, error) {
 			if _, dup := seen[normDomain]; dup {
 				return nil, fmt.Errorf("dupplicate domain in route %s[%d]: %s", route.Name(), i, domain)
 			}
+
 			seen[normDomain] = struct{}{}
 
 			trie.Insert(normDomain, route)

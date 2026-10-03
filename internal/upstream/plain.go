@@ -50,6 +50,7 @@ func NewPlain(opts ...Option) (*Plain, error) {
 
 	var dialOpts []DialOption
 	poolSize := int32(0)
+
 	for _, opt := range opts {
 		if o, ok := opt.(DialOption); ok {
 			dialOpts = append(dialOpts, o)
@@ -62,6 +63,7 @@ func NewPlain(opts ...Option) (*Plain, error) {
 			if err != nil {
 				return nil, fmt.Errorf("invalid upstream addr %q: %w", o.addr, err)
 			}
+
 			p.addr = addr
 
 		case timeoutOpt:
@@ -82,6 +84,7 @@ func NewPlain(opts ...Option) (*Plain, error) {
 	}
 
 	p.dialer = NewDialer(dialOpts...)
+
 	dialerFn := func(ctx context.Context) (net.Conn, error) {
 		return p.dialer.DialContext(ctx, p.addr.net, p.addr.addr)
 	}
@@ -117,6 +120,7 @@ func (p *Plain) exchangeWithPool(ctx context.Context, req *dns.Msg) (*dns.Msg, e
 	}
 
 	var errs []error
+
 	for range 2 {
 		conn, err := p.pool.Acquire(ctx)
 		if err != nil {
@@ -135,6 +139,7 @@ func (p *Plain) exchangeWithPool(ctx context.Context, req *dns.Msg) (*dns.Msg, e
 
 		// Success, return connection to pool
 		conn.Close()
+
 		return rsp, validateResponse(req, rsp)
 	}
 
@@ -152,7 +157,7 @@ func (p *Plain) exchangeUDP(ctx context.Context, req *dns.Msg) (*dns.Msg, error)
 	}
 
 	if !p.canFallback {
-		return nil, err
+		return rsp, err
 	}
 
 	if errors.Is(err, ErrMalformedRsp) {
@@ -166,7 +171,10 @@ func (p *Plain) exchangeUDP(ctx context.Context, req *dns.Msg) (*dns.Msg, error)
 		return p.exchange(ctx, req, switchNetwork(p.addr.net), p.addr.addr)
 	}
 
-	if rsp != nil && rsp.Truncated {
+	// Decoding errors may retain an unchecked ID. TSIG verification failures
+	// must remain errors rather than being treated as truncation.
+	if rsp != nil && rsp.Truncated && rsp.Id == req.Id &&
+		!errors.Is(err, dns.ErrId) && (err == nil || rsp.IsTsig() == nil) {
 		log.Ctx(ctx).
 			Info().
 			Str("source", "upstream_plain").
@@ -176,19 +184,26 @@ func (p *Plain) exchangeUDP(ctx context.Context, req *dns.Msg) (*dns.Msg, error)
 		return p.exchange(ctx, req, switchNetwork(p.addr.net), p.addr.addr)
 	}
 
-	return nil, err
+	return rsp, err
 }
 
 func (p *Plain) exchange(ctx context.Context, req *dns.Msg, network string, addr string) (*dns.Msg, error) {
-	dnsc := &dns.Client{
-		Net:     network,
-		Timeout: p.timeout,
-		Dialer:  p.dialer,
+	conn, err := p.dialer.DialContext(ctx, network, addr)
+	if err != nil {
+		return nil, fmt.Errorf("dial %s://%s: %w", network, addr, err)
 	}
 
-	rsp, _, err := dnsc.ExchangeContext(ctx, req, addr)
+	defer conn.Close()
+
+	dnsc := &dns.Client{
+		Timeout: p.timeout,
+	}
+
+	rsp, _, err := dnsc.ExchangeWithConnContext(ctx, req, &dns.Conn{
+		Conn: conn,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("exchange with %s: %w", p.addr, err)
+		return rsp, fmt.Errorf("exchange with %s: %w", p.addr, err)
 	}
 
 	return rsp, validateResponse(req, rsp)
@@ -200,6 +215,7 @@ func (p *Plain) Address() string {
 
 func (p *Plain) Close() error {
 	p.pool.Close()
+
 	return nil
 }
 

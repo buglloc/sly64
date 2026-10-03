@@ -11,7 +11,9 @@ import "dns.proto";
 message Config {
   LogLevel log_level = 1;
   uint32 max_requests = 2;
+
   repeated Listener listener = 10;
+
   repeated Route route = 20;
 }
 
@@ -76,6 +78,7 @@ message Dns64 {
 
 message Cache {
   uint32 max_items = 1;
+
   uint32 min_ttl = 2;
   uint32 max_ttl = 3;
 }

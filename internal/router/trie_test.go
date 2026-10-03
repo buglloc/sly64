@@ -19,6 +19,7 @@ func TestRouteTrie(t *testing.T) {
 	}
 
 	trie := router.NewRouteTrie()
+
 	// Both wildcard and non-wildcard syntax work the same way
 	// "*." prefix is dropped during insertion
 	trie.Insert("foo.example.com", routes[0])     // stored as foo.example.com
@@ -52,6 +53,7 @@ func TestRouteTrie(t *testing.T) {
 			got := trie.Find(test.domain)
 			if test.expect == nil {
 				require.Nil(t, got)
+
 				return
 			}
 
@@ -72,12 +74,15 @@ func TestRouterDuplicateDomainsAfterNormalization(t *testing.T) {
 			router.WithRouteSource(mustStaticSource(t, []string{"example.com"})),
 		),
 	)
+
 	require.Error(t, err)
 }
 
 func mustStaticSource(t *testing.T, domains []string) router.Source {
 	t.Helper()
+
 	s, err := router.NewStaticSource(domains)
 	require.NoError(t, err)
+
 	return s
 }

@@ -45,6 +45,7 @@ func TestTo6(t *testing.T) {
 
 	for _, c := range cases {
 		name := fmt.Sprintf("%s@%s", c.addr, c.prefix)
+
 		t.Run(name, func(t *testing.T) {
 			d64, err := dns64.NewDNS64(dns64.WithPrefix(c.prefix))
 			require.NoError(t, err)

@@ -17,6 +17,7 @@ import (
 const maxCNAMEDepth = 10
 
 type RouteSubscribeFn func(routeName string)
+
 type Route struct {
 	name         string
 	upstreams    []upstream.Upstream
@@ -62,10 +63,12 @@ func (r *Route) Subscribe(fn RouteSubscribeFn) {
 func (r *Route) Domains(ctx context.Context) ([]string, error) {
 	var errs []error
 	var out []string
+
 	for i, s := range r.sources {
 		domains, err := s.Domains(ctx)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("get domains from source [%d]: %w", i, err))
+
 			continue
 		}
 
@@ -77,6 +80,7 @@ func (r *Route) Domains(ctx context.Context) ([]string, error) {
 
 func (r *Route) Close() error {
 	var errs []error
+
 	for _, u := range r.upstreams {
 		if err := u.Close(); err != nil {
 			errs = append(errs, fmt.Errorf("close upstream %s: %w", u.Address(), err))
@@ -128,6 +132,7 @@ func (r *Route) exchangeDNS64(ctx context.Context, req *dns.Msg) (*dns.Msg, erro
 
 		aReq := req.Copy()
 		aReq.Question[0].Qtype = dns.TypeA
+
 		rsp, err := r.exchange(ctx, aReq)
 		if err != nil {
 			return nil, err
@@ -138,6 +143,7 @@ func (r *Route) exchangeDNS64(ctx context.Context, req *dns.Msg) (*dns.Msg, erro
 		}
 
 		answers := make([]dns.RR, 0, len(rsp.Answer))
+
 		for _, rr := range rsp.Answer {
 			aRec, ok := rr.(*dns.A)
 			if !ok {
@@ -161,6 +167,7 @@ func (r *Route) exchangeDNS64(ctx context.Context, req *dns.Msg) (*dns.Msg, erro
 		}
 
 		rsp.Answer = answers
+
 		return rsp, nil
 
 	default:
@@ -174,6 +181,7 @@ func (r *Route) exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 	}
 
 	qtype := req.Question[0].Qtype
+
 	switch qtype {
 	case dns.TypeCNAME:
 		return &dns.Msg{
@@ -201,8 +209,10 @@ func (r *Route) exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 	}
 
 	currentName := req.Question[0].Name
+
 	for depth := 0; depth < maxCNAMEDepth; depth++ {
 		subReq.Question[0].Name = currentName
+
 		rsp, err := r.doExchange(ctx, subReq)
 		if err != nil {
 			return nil, err
@@ -215,11 +225,13 @@ func (r *Route) exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 		// Collect A/AAAA responses
 		if rrs := parseAnswers(currentName, qtype, dns.ClassINET, rsp); len(rrs) > 0 {
 			rsp.Answer = rrs
+
 			return rsp, nil
 		}
 
 		// Find CNAME in the answer section for the current name
 		cname := ""
+
 		for _, rr := range rsp.Answer {
 			if rr.Header().Rrtype != dns.TypeCNAME {
 				continue
@@ -231,8 +243,10 @@ func (r *Route) exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 		if len(cname) > 0 {
 			if rrs := parseAnswers(cname, qtype, dns.ClassINET, rsp); len(rrs) > 0 {
 				rsp.Answer = rsp.Answer[:0]
+
 				for _, rr := range rrs {
 					rr.Header().Name = currentName
+
 					rsp.Answer = append(rsp.Answer, rr)
 				}
 
@@ -240,6 +254,7 @@ func (r *Route) exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 			}
 
 			currentName = cname
+
 			continue // Follow the CNAME
 		}
 
@@ -267,6 +282,7 @@ func (r *Route) doExchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) 
 					Str("route_name", r.name).
 					Str("upstream", u.Address()).
 					Msg("proxy request failed")
+
 				continue
 			}
 
@@ -288,6 +304,7 @@ func parseAnswers(qname string, qtype uint16, qclass uint16, rsp *dns.Msg) []dns
 
 func parseAnswersFromRR(qname string, qtype uint16, qclass uint16, rrs []dns.RR) []dns.RR {
 	answers := make([]dns.RR, 0, len(rrs))
+
 	for _, rr := range rrs {
 		header := rr.Header()
 		if header.Class != qclass {

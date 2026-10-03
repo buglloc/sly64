@@ -23,16 +23,18 @@ const (
 var _ dns.Handler = (*Server)(nil)
 
 type Server struct {
-	router     *router.Router
-	sema       syncutil.Semaphore
-	servers    []*dns.Server
-	closed     chan struct{}
-	ctx        context.Context
-	shutdownFn context.CancelFunc
+	router      *router.Router
+	sema        syncutil.Semaphore
+	servers     []*dns.Server
+	closed      chan struct{}
+	ctx         context.Context
+	shutdownFn  context.CancelFunc
+	shutdownErr error
 }
 
 func NewServer(opts ...Option) (*Server, error) {
 	ctx, shutdownFn := context.WithCancel(context.Background())
+
 	s := &Server{
 		sema:       syncutil.NopSemaphore{},
 		closed:     make(chan struct{}),
@@ -59,40 +61,66 @@ func (s *Server) Start() error {
 	defer close(s.closed)
 
 	g, ctx := errgroup.WithContext(s.ctx)
+
 	for _, srv := range s.servers {
-		srv := srv
-		g.Go(func() error {
-			err := srv.ListenAndServe()
-			if err == nil || errors.Is(err, context.Canceled) {
-				return nil
-			}
+		started := make(chan struct{})
+		stopped := make(chan struct{})
+		notifyStarted := srv.NotifyStartedFunc
+		srv.NotifyStartedFunc = func() {
+			close(started)
 
-			select {
-			case <-ctx.Done():
-				return nil
-			default:
-			}
-
-			log.Error().Err(err).Msg("listen failed")
-			return fmt.Errorf("start server: %w", err)
-		})
-	}
-
-	g.Go(func() error {
-		<-ctx.Done()
-
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), listenerShutdownTimeout)
-		defer cancel()
-		for _, srv := range s.servers {
-			if err := srv.ShutdownContext(shutdownCtx); err != nil {
-				log.Error().Err(err).Msg("listener shutdown failed")
+			if notifyStarted != nil {
+				notifyStarted()
 			}
 		}
 
-		return nil
-	})
+		g.Go(func() error {
+			defer close(stopped)
 
-	return g.Wait()
+			if ctx.Err() != nil {
+				return nil
+			}
+
+			err := srv.ListenAndServe()
+			if err == nil || errors.Is(err, context.Canceled) || ctx.Err() != nil {
+				return nil
+			}
+
+			log.Error().Err(err).Msg("listen failed")
+
+			return fmt.Errorf("start server: %w", err)
+		})
+
+		g.Go(func() error {
+			select {
+			case <-started:
+			case <-stopped:
+				return nil
+			}
+
+			<-ctx.Done()
+
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), listenerShutdownTimeout)
+
+			defer cancel()
+
+			if err := srv.ShutdownContext(shutdownCtx); err != nil {
+				return fmt.Errorf("shutdown listener: %w", err)
+			}
+
+			return nil
+		})
+	}
+
+	s.shutdownErr = g.Wait()
+
+	if s.router != nil {
+		if err := s.router.Close(); err != nil {
+			s.shutdownErr = errors.Join(s.shutdownErr, fmt.Errorf("close router: %w", err))
+		}
+	}
+
+	return s.shutdownErr
 }
 
 func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
@@ -103,8 +131,10 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		log.Warn().Msg("too many concurrent requests")
 		rsp.SetRcode(req, dns.RcodeServerFailure)
 		s.writeMsg(w, req, rsp)
+
 		return
 	}
+
 	defer s.sema.Release()
 
 	s.buildReply(req, rsp)
@@ -146,41 +176,25 @@ func stripOPT(extra []dns.RR) []dns.RR {
 			out = append(out, rr)
 		}
 	}
+
 	return out
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
-	defer func() {
-		s.servers = s.servers[:0]
-	}()
-
 	s.shutdownFn()
-
-	var errs []error
-	for _, srv := range s.servers {
-		if err := srv.ShutdownContext(ctx); err != nil {
-			errs = append(errs, fmt.Errorf("shutdown listener: %w", err))
-		}
-	}
-	s.servers = s.servers[:0]
 
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-s.closed:
-		if s.router != nil {
-			if err := s.router.Close(); err != nil {
-				errs = append(errs, fmt.Errorf("close router: %w", err))
-			}
-		}
-
-		return errors.Join(errs...)
+		return s.shutdownErr
 	}
 }
 
 func (s *Server) buildReply(req *dns.Msg, rsp *dns.Msg) {
 	if err := s.validateRequest(req, rsp); err != nil {
 		log.Warn().Err(err).Stringer("req", req).Msg("invalid request")
+
 		return
 	}
 
@@ -195,6 +209,7 @@ func (s *Server) buildReply(req *dns.Msg, rsp *dns.Msg) {
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("proxy request failed")
 		rsp.SetRcode(req, dns.RcodeServerFailure)
+
 		return
 	}
 
@@ -214,14 +229,17 @@ func (s *Server) validateRequest(req *dns.Msg, rsp *dns.Msg) error {
 	switch {
 	case len(req.Question) != 1:
 		rsp.SetRcode(req, dns.RcodeRefused)
+
 		return fmt.Errorf("expected 1 question, got: %d", len(req.Question))
 
 	case req.Question[0].Qtype == dns.TypeANY:
 		rsp.SetRcode(req, dns.RcodeNotImplemented)
+
 		return errors.New("refusing dns type any request")
 
 	case s.router == nil:
 		rsp.SetRcode(req, dns.RcodeServerFailure)
+
 		return errors.New("can't handle message w/o router")
 
 	default:

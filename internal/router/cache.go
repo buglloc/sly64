@@ -72,10 +72,16 @@ func (c *memCache) Fetch(req *dns.Msg, fetch cacheFetcher) (*dns.Msg, error) {
 		return rr, nil
 	}
 
+	ttl := c.ttl(req, rr)
+	if ttl == 0 {
+		return rr, nil
+	}
+
 	c.cache.Set(key, &cacheEntry{
 		msg:     rr.Copy(),
 		created: time.Now(),
-	}, c.ttl(rr))
+	}, ttl)
+
 	return rr, nil
 }
 
@@ -85,16 +91,35 @@ func (c *memCache) reqKey(req *dns.Msg) string {
 	}
 
 	q := req.Question[0]
+
 	return fmt.Sprintf("%d:%d:%s", q.Qclass, q.Qtype, normalizeDomain(q.Name))
 }
 
-func (c *memCache) ttl(msg *dns.Msg) time.Duration {
+func (c *memCache) ttl(req, msg *dns.Msg) time.Duration {
 	ttl := c.cfg.MaxTTL
+	hasAnswer := false
+	qtype := req.Question[0].Qtype
+
 	for _, a := range msg.Answer {
-		aTTL := a.Header().Ttl
-		if aTTL < ttl {
-			ttl = aTTL
+		ttl = min(ttl, a.Header().Ttl)
+
+		if a.Header().Rrtype == qtype || qtype == dns.TypeANY {
+			hasAnswer = true
 		}
+	}
+
+	if !hasAnswer {
+		for _, rr := range msg.Ns {
+			if soa, ok := rr.(*dns.SOA); ok {
+				return time.Duration(min(ttl, soa.Hdr.Ttl, soa.Minttl)) * time.Second
+			}
+		}
+
+		if len(msg.Answer) == 0 {
+			return 0
+		}
+
+		// Without an SOA, a CNAME-only answer is not evidence of NODATA.
 	}
 
 	if c.cfg.MinTTL != 0 && ttl < c.cfg.MinTTL {
@@ -108,6 +133,7 @@ func (c *memCache) withAgedTTL(item *ccache.Item[*cacheEntry]) *dns.Msg {
 	entry := item.Value()
 	msg := entry.msg.Copy()
 	ageSeconds := uint32(math.Ceil(time.Since(entry.created).Seconds()))
+
 	ageRRsTTL(msg.Answer, ageSeconds)
 	ageRRsTTL(msg.Ns, ageSeconds)
 	ageRRsTTL(msg.Extra, ageSeconds)

@@ -30,6 +30,7 @@ func (t *RouteTrie) Insert(domain string, route *Route) {
 		if node.children[label] == nil {
 			node.children[label] = &TrieNode{children: make(map[string]*TrieNode)}
 		}
+
 		node = node.children[label]
 	}
 
@@ -39,6 +40,7 @@ func (t *RouteTrie) Insert(domain string, route *Route) {
 
 func (t *RouteTrie) Find(domain string) *Route {
 	labels := splitDomain(domain)
+
 	return findTrieLabel(t.root, labels, 0)
 }
 
@@ -51,6 +53,7 @@ func findTrieLabel(node *TrieNode, labels []string, idx int) *Route {
 		if node.route != nil {
 			return node.route
 		}
+
 		return nil
 	}
 
@@ -69,6 +72,7 @@ func findTrieLabel(node *TrieNode, labels []string, idx int) *Route {
 
 func splitDomain(domain string) []string {
 	domain = normalizeDomain(domain)
+
 	dLen := len(domain)
 	if dLen == 0 {
 		return nil
@@ -84,6 +88,7 @@ func splitDomain(domain string) []string {
 	}
 
 	labels := strings.Split(domain[:dLen], ".")
+
 	for i, j := 0, len(labels)-1; i < j; i, j = i+1, j-1 {
 		labels[i], labels[j] = labels[j], labels[i]
 	}
@@ -95,5 +100,6 @@ func normalizeDomain(domain string) string {
 	domain = strings.ToLower(strings.TrimSpace(domain))
 	domain = strings.TrimPrefix(domain, "*.")
 	domain = strings.TrimSuffix(domain, ".")
+
 	return domain
 }

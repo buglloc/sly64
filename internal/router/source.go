@@ -59,6 +59,7 @@ type FileSource struct {
 
 func NewFileSource(filepath string, opts ...FileSourceOption) (*FileSource, error) {
 	ctx, shutdownFn := context.WithCancel(context.Background())
+
 	s := &FileSource{
 		filepath:   filepath,
 		closed:     make(chan struct{}),
@@ -75,6 +76,7 @@ func NewFileSource(filepath string, opts ...FileSourceOption) (*FileSource, erro
 	}
 
 	go s.loop()
+
 	return s, nil
 }
 
@@ -95,6 +97,7 @@ func (s *FileSource) Watch(notify WatchNotifier) {
 func (s *FileSource) Close() error {
 	s.shutdownFn()
 	<-s.closed
+
 	return nil
 }
 
@@ -107,6 +110,7 @@ func (s *FileSource) loop() {
 
 	ticker := time.NewTicker(s.reloadInterval)
 	defer ticker.Stop()
+
 	for {
 		select {
 		case <-s.ctx.Done():
@@ -117,6 +121,7 @@ func (s *FileSource) loop() {
 		notify, err := s.sync()
 		if err != nil {
 			log.Error().Err(err).Msgf("unable to sync file: %s", s.filepath)
+
 			continue
 		}
 
@@ -125,9 +130,11 @@ func (s *FileSource) loop() {
 		}
 
 		log.Info().Str("filepath", s.filepath).Msg("source file changed: notify")
+
 		s.mu.Lock()
 		watchers := append([]WatchNotifier(nil), s.watchers...)
 		s.mu.Unlock()
+
 		for _, w := range watchers {
 			w()
 		}
@@ -156,6 +163,7 @@ func (s *FileSource) sync() (bool, error) {
 
 	var domains []string
 	scanner := bufio.NewScanner(bytes.NewReader(data))
+
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if len(line) == 0 {

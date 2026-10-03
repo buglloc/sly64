@@ -72,7 +72,6 @@ func NewPuddlePool(dialer DialerFn, maxSize int32) (*PuddlePool, error) {
 		},
 		MaxSize: maxSize,
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -122,10 +121,12 @@ func (p *puddleConn) Close() error {
 	}
 
 	p.closed = true
+
 	if p.res != nil {
 		p.Conn.SetWriteDeadline(time.Time{})
 		p.Conn.SetReadDeadline(time.Time{})
 		p.res.Release()
+
 		return nil
 	}
 
@@ -140,11 +141,11 @@ func (p *puddleConn) Destroy() {
 
 func isConnAlive(conn net.Conn) bool {
 	conn.SetReadDeadline(time.Now().Add(1 * time.Millisecond))
+
 	defer conn.SetReadDeadline(time.Time{}) // Reset deadline
 
 	var buf [1]byte
 	_, err := conn.Read(buf[:0])
-
 	if err != nil {
 		var netErr net.Error
 		if errors.As(err, &netErr) && netErr.Timeout() {

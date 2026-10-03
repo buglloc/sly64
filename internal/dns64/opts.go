@@ -25,6 +25,7 @@ func WithPrefix(addr string) Option {
 		}
 
 		d.prefix = pref
+
 		return nil
 	}
 }

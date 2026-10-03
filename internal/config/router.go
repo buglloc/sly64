@@ -29,18 +29,19 @@ func NewSource(cfg *configpb.Source) (router.Source, error) {
 
 func NewRoute(cfg *configpb.Route) (*router.Route, error) {
 	var d64 *dns64.DNS64
+
 	if cfg.Dns64 != nil && len(cfg.Dns64.Prefix) > 0 {
 		var err error
 		d64, err = dns64.NewDNS64(
 			dns64.WithPrefix(cfg.Dns64.Prefix),
 		)
-
 		if err != nil {
 			return nil, fmt.Errorf("create DNS64: %w", err)
 		}
 	}
 
 	upstreams := make([]upstream.Upstream, len(cfg.Upstream))
+
 	for i, uCfg := range cfg.Upstream {
 		var err error
 		upstreams[i], err = NewUpstream(uCfg)
@@ -50,6 +51,7 @@ func NewRoute(cfg *configpb.Route) (*router.Route, error) {
 	}
 
 	sources := make([]router.Source, len(cfg.Source))
+
 	for i, sCfg := range cfg.Source {
 		var err error
 		sources[i], err = NewSource(sCfg)
@@ -59,11 +61,13 @@ func NewRoute(cfg *configpb.Route) (*router.Route, error) {
 	}
 
 	bannedQTypes := make([]uint16, len(cfg.BannedQtypes))
+
 	for i, t := range cfg.BannedQtypes {
 		bannedQTypes[i] = uint16(t)
 	}
 
 	var cacheCfg router.CacheCfg
+
 	if cfg.Cache != nil {
 		cacheCfg = router.CacheCfg{
 			Size:   int(cfg.Cache.MaxItems),
@@ -85,6 +89,7 @@ func NewRoute(cfg *configpb.Route) (*router.Route, error) {
 
 func (r *Runtime) NewRouter() (*router.Router, error) {
 	routes := make([]*router.Route, len(r.Config.Route))
+
 	for i, rCfg := range r.Config.Route {
 		var err error
 		routes[i], err = NewRoute(rCfg)

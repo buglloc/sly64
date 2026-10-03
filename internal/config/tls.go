@@ -15,12 +15,14 @@ func NewTLSConfig(cfg *configpb.TLS) (*tls.Config, error) {
 	tlsCfg := tls.Config{
 		RootCAs: certifi.NewCertPool(),
 	}
+
 	if cfg == nil {
 		return &tlsCfg, nil
 	}
 
 	tlsCfg.ServerName = cfg.ServerName
 	tlsCfg.InsecureSkipVerify = cfg.InsecureSkipVerify
+
 	if len(cfg.CaCert) > 0 {
 		cas, err := newCertPool(cfg.CaCert)
 		if err != nil {
@@ -45,6 +47,7 @@ func newCertPool(caCert string) (*x509.CertPool, error) {
 	}
 
 	out := x509.NewCertPool()
+
 	for _, cert := range certs {
 		out.AddCert(cert)
 	}
@@ -58,5 +61,6 @@ func patchTLSConfig(cfg *configpb.TLS, cfgPath string) error {
 	}
 
 	cfg.CaCert = absPath(cfgPath, cfg.CaCert)
+
 	return nil
 }

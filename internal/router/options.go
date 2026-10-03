@@ -29,6 +29,7 @@ func WithRouteUpstreams(upstreams ...upstream.Upstream) RouteOption {
 	return func(r *Route) {
 		r.upstreams = upstreams
 		r.breakers = make([]*gobreaker.CircuitBreaker[*dns.Msg], len(r.upstreams))
+
 		for i, u := range r.upstreams {
 			r.breakers[i] = gobreaker.NewCircuitBreaker[*dns.Msg](gobreaker.Settings{
 				Name: u.Address(),
@@ -82,6 +83,7 @@ func WithBannedQTypes(types ...uint16) RouteOption {
 		}
 
 		r.bannedQTypes = make(map[uint16]struct{}, len(types))
+
 		for _, typ := range types {
 			r.bannedQTypes[typ] = struct{}{}
 		}

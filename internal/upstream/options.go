@@ -102,10 +102,6 @@ func WithTLSConfig(cfg *tls.Config) Option {
 		return nopOpt{}
 	}
 
-	if cfg.ClientSessionCache == nil {
-		cfg.ClientSessionCache = tls.NewLRUClientSessionCache(0)
-	}
-
 	return tlsCfgOpt{
 		cfg: cfg,
 	}

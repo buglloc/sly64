@@ -61,6 +61,7 @@ func NewDoT(opts ...Option) (*DoT, error) {
 
 	var dialOpts []DialOption
 	poolSize := int32(0)
+
 	for _, opt := range opts {
 		if o, ok := opt.(DialOption); ok {
 			dialOpts = append(dialOpts, o)
@@ -73,14 +74,14 @@ func NewDoT(opts ...Option) (*DoT, error) {
 			if err != nil {
 				return nil, fmt.Errorf("invalid upstream addr %q: %w", o.addr, err)
 			}
+
 			d.addr = addr
 
 		case timeoutOpt:
 			d.dnsc.Timeout = o.timeout
 
 		case tlsCfgOpt:
-			d.tlsConfig = o.cfg
-			d.addr.serverName = o.cfg.ServerName
+			d.tlsConfig = o.cfg.Clone()
 
 		case poolOpt:
 			poolSize = o.maxItems
@@ -93,20 +94,26 @@ func NewDoT(opts ...Option) (*DoT, error) {
 		}
 	}
 
+	if d.tlsConfig.ClientSessionCache == nil {
+		d.tlsConfig.ClientSessionCache = tls.NewLRUClientSessionCache(0)
+	}
+
+	if d.tlsConfig.ServerName == "" {
+		host, _, _ := net.SplitHostPort(d.addr.addr)
+		d.tlsConfig.ServerName = host
+	} else {
+		d.addr.serverName = d.tlsConfig.ServerName
+	}
+
 	d.dialer = NewDialer(dialOpts...)
+
+	tlsDialer := &tls.Dialer{
+		NetDialer: d.dialer,
+		Config:    d.tlsConfig,
+	}
+
 	dialerFn := func(ctx context.Context) (net.Conn, error) {
-		tcpConn, err := d.dialer.DialContext(ctx, "tcp", d.addr.addr)
-		if err != nil {
-			return nil, err
-		}
-
-		conn := tls.Client(tcpConn, d.tlsConfig)
-		if err := conn.HandshakeContext(ctx); err != nil {
-			_ = tcpConn.Close()
-			return nil, err
-		}
-
-		return conn, nil
+		return tlsDialer.DialContext(ctx, "tcp", d.addr.addr)
 	}
 
 	if poolSize > 0 {
@@ -125,6 +132,7 @@ func NewDoT(opts ...Option) (*DoT, error) {
 
 func (d *DoT) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 	var errs []error
+
 	for range 2 {
 		conn, err := d.pool.Acquire(ctx)
 		if err != nil {
@@ -143,6 +151,7 @@ func (d *DoT) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 
 		// Success, return connection to pool
 		conn.Close()
+
 		return rsp, validateResponse(req, rsp)
 	}
 
@@ -155,6 +164,7 @@ func (d *DoT) Address() string {
 
 func (d *DoT) Close() error {
 	d.pool.Close()
+
 	return nil
 }
 

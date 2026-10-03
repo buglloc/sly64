@@ -25,6 +25,7 @@ var startCmd = &cobra.Command{
 		}
 
 		errChan := make(chan error)
+
 		go func() {
 			defer close(errChan)
 
@@ -36,11 +37,13 @@ var startCmd = &cobra.Command{
 
 		stopChan := make(chan os.Signal, 1)
 		signal.Notify(stopChan, syscall.SIGINT, syscall.SIGTERM)
+
 		select {
 		case sig := <-stopChan:
 			log.Info().Stringer("signal", sig).Msg("shutting down by signal")
 
 			ctx, cancel := context.WithTimeout(context.Background(), config.ShutdownDeadline)
+
 			defer cancel()
 
 			if err := srv.Shutdown(ctx); err != nil {

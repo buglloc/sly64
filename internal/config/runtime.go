@@ -18,6 +18,7 @@ func newRuntime(cfg *configpb.Config) (*Runtime, error) {
 	}
 
 	zerolog.SetGlobalLevel(protoLogLevelToZero(r.Config.LogLevel))
+
 	return r, nil
 }
 
