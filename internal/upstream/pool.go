@@ -145,6 +145,7 @@ func isConnAlive(conn net.Conn) bool {
 	defer conn.SetReadDeadline(time.Time{}) // Reset deadline
 
 	var buf [1]byte
+
 	_, err := conn.Read(buf[:0])
 	if err != nil {
 		if netErr, ok := errors.AsType[net.Error](err); ok && netErr.Timeout() {

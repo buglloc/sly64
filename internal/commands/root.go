@@ -42,9 +42,11 @@ func Execute() error {
 
 func initRuntime() {
 	var err error
+
 	runtime, err = config.NewRuntime(rootArgs.CfgPath)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "unable to create runtime: %v\n", err)
+
 		os.Exit(1)
 	}
 }

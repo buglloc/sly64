@@ -35,9 +35,11 @@ func TestPlainQueryTimeoutIndependentOfDialTimeout(t *testing.T) {
 				}
 
 				received <- struct{}{}
+
 				select {
 				case <-release:
 					return plainTestReply(req).Pack()
+
 				case <-ctx.Done():
 					return nil, nil
 				}
@@ -87,6 +89,7 @@ func TestPlainQueryTimeoutIndependentOfDialTimeout(t *testing.T) {
 			select {
 			case got := <-results:
 				t.Fatalf("query ended before the answer was released: %v", got.err)
+
 			case <-delay.C:
 			}
 
@@ -97,6 +100,7 @@ func TestPlainQueryTimeoutIndependentOfDialTimeout(t *testing.T) {
 				require.NoError(t, got.err)
 				require.Equal(t, req.Id, got.rsp.Id)
 				requireDNSAnswers(t, plainTestReply(req).Answer, got.rsp.Answer)
+
 			case <-ctx.Done():
 				t.Fatal("query did not receive the delayed answer")
 			}
@@ -124,6 +128,7 @@ func TestPlainQueryTimeoutStillEnforced(t *testing.T) {
 				}
 
 				received <- struct{}{}
+
 				<-ctx.Done()
 
 				return nil, nil
@@ -181,6 +186,7 @@ func TestPlainMalformedResponseFallback(t *testing.T) {
 
 				rsp := new(dns.Msg)
 				rsp.SetReply(req)
+
 				rsp.Truncated = tc.truncated
 				if tc.mismatchedID {
 					rsp.Id ^= 1
@@ -313,6 +319,7 @@ func startPlainTestServer(t *testing.T, respond func(context.Context, string, *d
 	listener, err := net.Listen(NetTCP4, packetConn.LocalAddr().String())
 	if err != nil {
 		_ = packetConn.Close()
+
 		t.Fatalf("listen TCP: %v", err)
 	}
 
@@ -367,6 +374,7 @@ func startPlainTestServer(t *testing.T, respond func(context.Context, string, *d
 		case <-started:
 		case err := <-finished:
 			t.Fatalf("DNS responder stopped before startup: %v", err)
+
 		case <-time.After(3 * time.Second):
 			t.Fatal("DNS responder did not start")
 		}

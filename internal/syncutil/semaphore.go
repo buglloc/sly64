@@ -38,6 +38,7 @@ func (c *LeakySemaphore) Acquire(ctx context.Context) (err error) {
 	select {
 	case c.c <- struct{}{}:
 		return nil
+
 	case <-ctx.Done():
 		return ctx.Err()
 	}
@@ -47,6 +48,7 @@ func (c *LeakySemaphore) TryAcquire() bool {
 	select {
 	case c.c <- struct{}{}:
 		return true
+
 	default:
 		return false
 	}

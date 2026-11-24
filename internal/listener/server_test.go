@@ -227,8 +227,10 @@ func TestServerConcurrentShutdown(t *testing.T) {
 					if addr.Network() == "tcp" {
 						tcpAddr = addr.String()
 					}
+
 				case err := <-done:
 					t.Fatalf("server stopped before startup: %v", err)
+
 				case <-time.After(5 * time.Second):
 					t.Fatal("listeners did not start")
 				}
@@ -279,6 +281,7 @@ func TestServerShutdownBeforeStart(t *testing.T) {
 	done := make(chan error, 1)
 
 	go func() { done <- s.Shutdown(ctx) }()
+
 	<-s.ctx.Done()
 
 	require.NoError(t, s.Start())

@@ -186,6 +186,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
+
 	case <-s.closed:
 		return s.shutdownErr
 	}

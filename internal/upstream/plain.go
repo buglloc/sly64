@@ -133,6 +133,7 @@ func (p *Plain) exchangeWithPool(ctx context.Context, req *dns.Msg) (*dns.Msg, e
 		if err != nil {
 			// Connection failed, destroy it and try again
 			conn.Destroy()
+
 			errs = append(errs, err)
 			continue
 		}

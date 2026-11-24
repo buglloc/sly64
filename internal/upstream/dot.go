@@ -145,6 +145,7 @@ func (d *DoT) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) {
 		if err != nil {
 			// Connection failed, destroy it and try again
 			conn.Destroy()
+
 			errs = append(errs, err)
 			continue
 		}

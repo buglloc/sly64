@@ -32,6 +32,7 @@ func NewRoute(cfg *configpb.Route) (*router.Route, error) {
 
 	if cfg.Dns64 != nil && len(cfg.Dns64.Prefix) > 0 {
 		var err error
+
 		d64, err = dns64.NewDNS64(
 			dns64.WithPrefix(cfg.Dns64.Prefix),
 		)
@@ -44,6 +45,7 @@ func NewRoute(cfg *configpb.Route) (*router.Route, error) {
 
 	for i, uCfg := range cfg.Upstream {
 		var err error
+
 		upstreams[i], err = NewUpstream(uCfg)
 		if err != nil {
 			return nil, fmt.Errorf("create upstream [%d]: %w", i, err)
@@ -54,6 +56,7 @@ func NewRoute(cfg *configpb.Route) (*router.Route, error) {
 
 	for i, sCfg := range cfg.Source {
 		var err error
+
 		sources[i], err = NewSource(sCfg)
 		if err != nil {
 			return nil, fmt.Errorf("create source [%d]: %w", i, err)
@@ -92,6 +95,7 @@ func (r *Runtime) NewRouter() (*router.Router, error) {
 
 	for i, rCfg := range r.Config.Route {
 		var err error
+
 		routes[i], err = NewRoute(rCfg)
 		if err != nil {
 			return nil, fmt.Errorf("create route [%d]: %w", i, err)

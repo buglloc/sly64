@@ -53,6 +53,7 @@ func NewDialer(opts ...DialOption) *net.Dialer {
 func newBindToDeviceControl(dev string) func(ctx context.Context, network, address string, c syscall.RawConn) error {
 	return func(ctx context.Context, network, address string, c syscall.RawConn) error {
 		var cerr error
+
 		err := c.Control(func(fd uintptr) {
 			cerr = syscall.BindToDevice(int(fd), dev)
 		})
@@ -72,15 +73,19 @@ func switchNetwork(cur string) string {
 	switch cur {
 	case NetUDP:
 		return NetTCP
+
 	case NetUDP4:
 		return NetTCP4
+
 	case NetUDP6:
 		return NetTCP6
 
 	case NetTCP:
 		return NetUDP
+
 	case NetTCP4:
 		return NetUDP4
+
 	case NetTCP6:
 		return NetUDP6
 
