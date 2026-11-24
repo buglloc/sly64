@@ -20,10 +20,10 @@ jobs:
     steps:
       # Get the repositery's code
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Set up Golang
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v7
         with:
           go-version: '1.27.x'
           check-latest: true
@@ -31,9 +31,9 @@ jobs:
 
       - run: "go test ./..."
       - run: "go vet ./..."
-      - uses: dominikh/staticcheck-action@v1.4.0
+      - uses: dominikh/staticcheck-action@v1.4.1
         with:
-          version: "2026.2.1"
+          version: "2026.2.2"
           install-go: false
   test:
     strategy:
@@ -48,10 +48,10 @@ jobs:
     steps:
       # Get the repositery's code
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Set up Golang
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v7
         with:
           go-version: '1.${{ matrix.go }}.x'
           cache: true
