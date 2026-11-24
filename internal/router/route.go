@@ -262,7 +262,6 @@ func (r *Route) doExchange(ctx context.Context, req *dns.Msg) (*dns.Msg, error) 
 			rsp, err := r.breakers[i].Execute(func() (*dns.Msg, error) {
 				return u.Exchange(ctx, req)
 			})
-
 			if err != nil {
 				if errors.Is(err, gobreaker.ErrOpenState) || errors.Is(err, gobreaker.ErrTooManyRequests) {
 					continue

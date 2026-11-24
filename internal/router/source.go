@@ -115,6 +115,7 @@ func (s *FileSource) loop() {
 		select {
 		case <-s.ctx.Done():
 			return
+
 		case <-ticker.C:
 		}
 
